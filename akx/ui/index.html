@@ -1,0 +1,3382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>AKX Downloader</title>
+<style>
+:root {
+  --bg: #0A0A0A;
+  --sidebar: #060606;
+  --card: #161616;
+  --card-2: #1F1F1F;
+  --border: #262626;
+  --border-dim: #1F1F1F;
+  --text: #FAFAFA;
+  --text-dim: #9A9A9A;
+  --muted: #555;
+  /* Brand: morado/violeta (estilo AKX Downloader 2024) */
+  --red: #A855F7;             /* púrpura principal */
+  --red-hover: #9333EA;       /* púrpura hover (más oscuro) */
+  --red-dim: #4C1D7A;         /* púrpura muy oscuro para estados deshabilitados */
+  --red-soft: rgba(168, 85, 247, 0.10);  /* tinte sutil para fondos */
+  --red-glow: rgba(168, 85, 247, 0.45);  /* glow para sombras */
+  --ok: #22C55E; --warn: #F59E0B; --err: #EF4444;
+}
+body.light {
+  --bg: #F5F5F7; --sidebar: #FFFFFF;
+  --card: #FFFFFF; --card-2: #F0F0F0;
+  --border: #E0E0E0; --border-dim: #ECECEC;
+  --text: #1A1A1A; --text-dim: #555; --muted: #999;
+  --red-soft: rgba(168, 85, 247, 0.08);
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { height: 100%; overflow: hidden; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Inter, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+button { font-family: inherit; }
+input, select { font-family: inherit; }
+
+.app { display: flex; height: 100vh; }
+
+/* ===== SIDEBAR ===== */
+.sidebar {
+  width: 240px;
+  background: var(--sidebar);
+  display: flex; flex-direction: column;
+  padding: 20px 0;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border-dim);
+}
+.brand {
+  display: flex; align-items: center;
+  padding: 0 20px 16px; gap: 10px;
+}
+.brand img { width: 40px; height: 40px; border-radius: 8px; }
+.brand-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.brand-card {
+  margin: 0 20px 16px;
+  background: var(--card);
+  border: 2px solid #2D1B4E;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex; justify-content: center;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.18), inset 0 0 12px rgba(168, 85, 247, 0.05);
+}
+.brand-card img { width: 80px; height: 80px; filter: drop-shadow(0 0 10px rgba(168, 85, 247,0.3)); }
+nav { padding: 0 12px; flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  text-align: left;
+  transition: background 0.12s, color 0.12s;
+  position: relative;
+}
+.nav-item:hover { background: var(--card); color: var(--text); }
+.nav-item.active {
+  background: var(--red-soft);
+  color: var(--red);
+  font-weight: 700;
+}
+.nav-item.active::before {
+  content: ''; position: absolute;
+  left: 0; top: 8px; bottom: 8px; width: 3px;
+  background: var(--red);
+  border-radius: 0 3px 3px 0;
+  box-shadow: 0 0 8px var(--red);
+}
+.nav-icon { width: 20px; text-align: center; font-size: 15px; }
+.theme-toggle {
+  margin: 0 20px;
+  padding: 12px 0 0;
+  display: flex; align-items: center; gap: 10px;
+  color: var(--text-dim); font-size: 12px;
+  border-top: 1px solid var(--border-dim);
+}
+.theme-toggle span:nth-child(2) { flex: 1; }
+.switch { position: relative; display: inline-block; width: 42px; height: 22px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; cursor: pointer;
+  inset: 0; background: var(--border);
+  transition: 0.2s; border-radius: 22px;
+}
+.slider::before {
+  position: absolute; content: '';
+  height: 16px; width: 16px;
+  left: 3px; bottom: 3px;
+  background: white; transition: 0.2s; border-radius: 50%;
+}
+input:checked + .slider { background: var(--red); }
+input:checked + .slider::before { transform: translateX(20px); }
+
+/* ===== CONTENIDO ===== */
+.content { flex: 1; padding: 24px 28px; overflow-y: auto; }
+.page { display: none; }
+.page.active { display: block; animation: fadeIn 0.18s ease-out; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.page-title { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+
+.field-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+/* Inputs */
+.input-group {
+  display: flex; align-items: center;
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 0 14px;
+  height: 46px;
+  margin-bottom: 14px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.input-group:focus-within {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px var(--red-soft);
+}
+.input-group .icon { color: var(--text-dim); margin-right: 10px; font-size: 15px; }
+.input-group input {
+  flex: 1; background: transparent; border: none;
+  color: var(--text); font-size: 13px; outline: none;
+}
+.input-group input::placeholder { color: var(--muted); }
+
+.row { display: flex; gap: 10px; margin-bottom: 14px; align-items: stretch; }
+.row .grow { flex: 1; }
+
+/* Buttons */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text);
+  padding: 0 16px;
+  height: 44px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.15s, border-color 0.15s, transform 0.08s;
+  white-space: nowrap;
+}
+.btn:hover { background: var(--card-2); }
+.btn:active { transform: scale(0.97); }
+.btn.primary {
+  background: var(--red); border-color: var(--red);
+  color: white; font-weight: 700; font-size: 15px;
+  height: 52px; flex: 1;
+}
+.btn.primary:hover {
+  background: var(--red-hover);
+  box-shadow: 0 0 28px var(--red-glow);
+}
+.btn.primary:disabled {
+  background: var(--red-dim); border-color: var(--red-dim);
+  cursor: not-allowed; box-shadow: none;
+}
+.btn.secondary {
+  height: 52px; min-width: 160px; font-weight: 700; font-size: 14px;
+  color: var(--text-dim);
+}
+.btn.secondary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn.cancel-active { color: var(--text); border-color: var(--red); }
+.btn-row { display: flex; gap: 10px; margin-bottom: 14px; }
+
+/* Format cards */
+.twin { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 14px; }
+.format-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.format-card {
+  background: var(--card);
+  border: 2px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex; align-items: center;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+  height: 92px;
+}
+.format-card:hover { border-color: var(--border); }
+.format-card.selected {
+  border-color: var(--red);
+  background: var(--red-soft);
+  box-shadow: 0 0 20px var(--red-glow);
+}
+.format-icon {
+  width: 52px; height: 52px;
+  background: #2D1B4E;
+  border: 1px solid #4C2C7A;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--red);
+  font-size: 22px;
+  margin-right: 14px;
+  flex-shrink: 0;
+  transition: box-shadow 0.18s;
+}
+.format-card.selected .format-icon { box-shadow: 0 0 16px var(--red-glow); }
+.format-text { flex: 1; }
+.format-title { font-size: 15px; font-weight: 700; }
+.format-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.format-radio {
+  width: 22px; height: 22px;
+  border: 2px solid var(--muted);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.18s;
+}
+.format-card.selected .format-radio { border-color: var(--red); }
+.format-radio::after {
+  content: ''; width: 12px; height: 12px;
+  background: var(--red); border-radius: 50%;
+  transform: scale(0); transition: transform 0.18s;
+}
+.format-card.selected .format-radio::after { transform: scale(1); }
+
+/* Options card */
+.options-card {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 14px;
+  height: 92px;
+  display: flex; align-items: center;
+}
+.checkbox-wrap { display: flex; flex-direction: column; gap: 4px; }
+.checkbox-label {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer;
+  font-weight: 700; font-size: 12px;
+}
+.checkbox-label input { display: none; }
+.checkbox {
+  width: 18px; height: 18px;
+  background: var(--card-2);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  color: white; font-size: 12px;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.checkbox-label input:checked + .checkbox {
+  background: var(--red); border-color: var(--red);
+}
+.checkbox-label input:checked + .checkbox::after { content: '✓'; }
+.checkbox-hint { color: var(--text-dim); font-size: 11px; padding-left: 28px; }
+
+/* Download card */
+.download-card {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 14px;
+  display: flex; gap: 14px;
+  margin-bottom: 14px;
+  min-height: 124px;
+}
+.thumb {
+  width: 96px; height: 96px;
+  border-radius: 12px;
+  background: #1A0F2E center / cover no-repeat;
+  flex-shrink: 0; overflow: hidden;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+}
+.thumb.is-default {
+  background: radial-gradient(circle, rgba(168, 85, 247,0.6) 0%, #0A0A0A 70%);
+  color: white;
+  font-size: 36px;
+  box-shadow: inset 0 0 18px rgba(168, 85, 247, 0.3);
+}
+.thumb.is-default .thumb-glyph { filter: drop-shadow(0 0 8px rgba(168, 85, 247,0.6)); }
+.dl-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.dl-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.dl-title {
+  font-size: 14px; font-weight: 700; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dl-pct { font-size: 18px; font-weight: 700; color: var(--red); }
+.progress-bar {
+  height: 10px;
+  background: var(--border);
+  border-radius: 5px;
+  margin-top: 12px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--red-hover), var(--red));
+  width: 0%;
+  border-radius: 5px;
+  transition: width 0.25s ease-out;
+  box-shadow: 0 0 12px var(--red-glow);
+}
+.dl-stats { font-size: 12px; color: var(--text-dim); margin-top: 8px; min-height: 16px; }
+.dl-stats.warn { color: var(--warn); }
+.dl-stats.err { color: var(--err); }
+.dl-stats.ok { color: var(--ok); }
+
+/* Badge de playlist */
+.dl-playlist-badge {
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(135deg, rgba(168, 85, 247,0.10), rgba(168, 85, 247,0.02));
+  border: 1px solid rgba(168, 85, 247,0.30);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: var(--text);
+}
+.dl-playlist-badge .pl-icon { font-size: 14px; }
+.dl-playlist-badge #dl-playlist-text { font-weight: 600; white-space: nowrap; }
+.pl-mini-bar {
+  flex: 1;
+  height: 4px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 60px;
+}
+.pl-mini-fill {
+  height: 100%;
+  background: var(--red);
+  width: 0%;
+  transition: width 300ms ease;
+  box-shadow: 0 0 8px rgba(168, 85, 247,0.6);
+}
+
+/* Section header */
+.section-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 4px 0 8px;
+}
+.section-title { font-size: 14px; font-weight: 700; }
+
+/* History */
+.history-item {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 6px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.history-item:hover { border-color: var(--border); background: var(--card-2); }
+.hist-icon {
+  width: 44px; height: 44px;
+  background: #1A0F2E;
+  border: 1px solid #330505;
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--red);
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 8px rgba(168, 85, 247, 0.15);
+}
+.hist-text { flex: 1; min-width: 0; }
+.hist-title {
+  font-size: 13px; font-weight: 700;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.hist-meta { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+.hist-meta .badge { font-weight: 700; }
+.hist-meta .ok { color: var(--ok); font-weight: 700; }
+.hist-meta .err { color: var(--err); font-weight: 700; }
+.hist-meta .warn { color: var(--warn); font-weight: 700; }
+.hist-side { text-align: right; font-size: 11px; color: var(--text-dim); }
+.hist-side .actions { display: flex; gap: 4px; margin-top: 4px; justify-content: flex-end; }
+.icon-btn {
+  width: 28px; height: 28px;
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.12s;
+}
+.icon-btn:hover { background: var(--border); color: var(--text); }
+.icon-btn.danger:hover { background: #3A1010; color: var(--err); border-color: var(--err); }
+.icon-btn.play:hover { background: var(--red-soft); color: var(--red); border-color: var(--red); }
+
+/* Player */
+.player-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 18px;
+  height: calc(100vh - 110px);
+}
+.player-files {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 14px;
+  overflow-y: auto;
+  display: flex; flex-direction: column;
+}
+.player-files-header { margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-dim); }
+.player-files-folder {
+  font-size: 11px; color: var(--text-dim);
+  margin-top: 8px; word-break: break-all;
+}
+
+/* Toggle audio/video del reproductor */
+.player-toggle {
+  display: flex; gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 3px;
+}
+.player-toggle-btn {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: 12px; font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 150ms;
+}
+.player-toggle-btn:hover {
+  background: var(--card-2);
+  color: var(--text);
+}
+.player-toggle-btn.active {
+  background: var(--red-soft);
+  color: var(--red);
+  box-shadow: inset 0 0 0 1px rgba(168, 85, 247, 0.3);
+}
+.player-toggle-btn .toggle-glyph {
+  font-size: 14px; font-weight: 700;
+}
+.file-list { display: flex; flex-direction: column; gap: 2px; }
+.file-row {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  font-size: 12px;
+  transition: background 0.1s;
+  position: relative;
+}
+.file-row:hover { background: var(--card-2); }
+.file-row.playing {
+  background: var(--red-soft);
+  color: var(--red);
+  font-weight: 700;
+}
+.file-row .thumb-mini {
+  width: 36px; height: 36px;
+  background: var(--card-2) center/cover no-repeat;
+  border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--red); font-size: 14px; flex-shrink: 0;
+  position: relative; overflow: hidden;
+}
+.file-row .thumb-mini.has-image { background-color: #000; }
+.file-row .thumb-mini .glyph {
+  /* glyph fallback solo cuando no hay imagen */
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; height: 100%;
+}
+.file-row .thumb-mini.has-image .glyph { display: none; }
+.file-row .name {
+  flex: 1; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.file-row .actions {
+  display: none;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.file-row:hover .actions { display: flex; }
+.file-row.editing .actions { display: none; }
+.file-row .row-btn {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px;
+  transition: all 0.15s;
+}
+.file-row .row-btn:hover {
+  background: var(--card);
+  color: var(--text);
+  border-color: var(--border);
+}
+.file-row .row-btn.delete:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--err);
+  color: var(--err);
+}
+.file-row .rename-input {
+  flex: 1; background: var(--bg);
+  border: 1px solid var(--red);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+}
+
+.player-main {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 24px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.player-empty {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+  color: var(--muted);
+}
+.player-empty .icon { font-size: 64px; margin-bottom: 12px; opacity: 0.4; }
+.video-container {
+  flex: 1;
+  display: flex; align-items: center; justify-content: center;
+  background: black;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  min-height: 200px;
+}
+.video-container video { width: 100%; height: 100%; object-fit: contain; }
+.audio-container {
+  flex: 1;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+}
+.audio-art {
+  width: 240px; height: 240px;
+  border-radius: 18px;
+  background: radial-gradient(circle, rgba(168, 85, 247,0.55), #1A0F2E 75%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 90px;
+  color: white;
+  margin-bottom: 24px;
+  box-shadow: 0 0 80px rgba(168, 85, 247, 0.35), inset 0 0 30px rgba(168, 85, 247, 0.2);
+  text-shadow: 0 0 20px rgba(168, 85, 247, 0.8);
+  position: relative;
+  overflow: hidden;
+}
+.audio-art.has-cover {
+  background: #000;
+  text-shadow: none;
+  box-shadow: 0 0 80px rgba(168, 85, 247, 0.35), inset 0 0 0 1px rgba(168, 85, 247, 0.3);
+}
+.audio-art img {
+  width: 100%; height: 100%; object-fit: cover;
+  border-radius: 18px;
+}
+.now-playing {
+  font-size: 16px; font-weight: 700;
+  margin-bottom: 16px; text-align: center; max-width: 100%;
+  word-break: break-word;
+}
+.player-controls audio,
+.player-controls video { width: 100%; }
+.player-controls audio { height: 50px; }
+
+/* Settings */
+.settings-card {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 18px;
+  margin-bottom: 14px;
+}
+.settings-card h3 { font-size: 14px; font-weight: 700; margin-bottom: 10px; }
+.settings-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0;
+  font-size: 12px;
+}
+.settings-row .label { color: var(--text-dim); }
+
+/* Folder settings (carpetas separadas audio/video) */
+.folder-setting { margin-bottom: 4px; }
+.folder-setting-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; color: var(--text-dim);
+  margin-bottom: 6px; font-weight: 600;
+}
+.folder-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  background: rgba(168, 85, 247, 0.12);
+  border: 1px solid rgba(168, 85, 247, 0.30);
+  border-radius: 6px;
+  color: var(--red);
+  font-size: 12px; font-weight: 700;
+}
+select {
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  outline: none;
+}
+.env-led {
+  width: 8px; height: 8px; border-radius: 50%;
+  display: inline-block; margin-right: 8px;
+}
+.env-led.on { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+.env-led.off { background: var(--muted); }
+.env-led.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+.env-led.err { background: var(--err); box-shadow: 0 0 8px var(--err); }
+
+/* FFmpeg setup card */
+.ffmpeg-status {
+  background: var(--bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.ffmpeg-status-row {
+  display: flex; align-items: center;
+  margin-bottom: 6px;
+}
+.ffmpeg-status-title {
+  font-size: 13px; font-weight: 700;
+  color: var(--text);
+}
+.ffmpeg-status-version {
+  font-size: 11px; color: var(--text-dim);
+  font-family: 'Consolas', 'Monaco', monospace;
+  margin-bottom: 4px;
+  padding-left: 16px;
+  word-break: break-all;
+}
+.ffmpeg-status-path {
+  font-size: 10px; color: var(--muted);
+  font-family: 'Consolas', 'Monaco', monospace;
+  padding-left: 16px;
+  word-break: break-all;
+}
+.ffmpeg-actions {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.ffmpeg-help {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.ffmpeg-help summary {
+  cursor: pointer;
+  padding: 6px 0;
+  color: var(--red);
+  font-weight: 600;
+  user-select: none;
+}
+.ffmpeg-help summary:hover { opacity: 0.85; }
+.ffmpeg-help-body {
+  padding: 8px 0 4px 0;
+  line-height: 1.6;
+}
+
+/* Actualizador de yt-dlp (mismo lenguaje visual que la card de FFmpeg) */
+.updater-status {
+  background: var(--bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.updater-status-row { display: flex; align-items: center; }
+.updater-status-title { font-size: 13px; font-weight: 700; color: var(--text); }
+.updater-status-sub {
+  font-size: 11px; color: var(--text-dim);
+  padding-left: 16px; margin-top: 4px; line-height: 1.5;
+}
+.updater-status-path {
+  font-size: 10px; color: var(--muted);
+  font-family: 'Consolas', 'Monaco', monospace;
+  padding-left: 16px; margin-top: 4px;
+  word-break: break-all;
+}
+.updater-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.updater-progress {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 10px 0 8px;
+  display: none;
+}
+.updater-progress.show { display: block; }
+.updater-progress-fill {
+  height: 100%; width: 0%;
+  background: linear-gradient(90deg, var(--red-hover), var(--red));
+  border-radius: 3px;
+  transition: width 250ms ease-out;
+  box-shadow: 0 0 10px var(--red-glow);
+}
+.updater-feedback {
+  font-size: 12px; color: var(--text-dim);
+  line-height: 1.5; min-height: 18px;
+}
+.updater-feedback.ok   { color: var(--ok); }
+.updater-feedback.err  { color: var(--err); }
+.updater-feedback.warn { color: var(--warn); }
+.updater-hint {
+  font-size: 11px; color: var(--text-dim);
+  margin-top: 10px; line-height: 1.6;
+}
+/* Resalte temporal cuando se llega acá desde el banner de error */
+.settings-card.flash {
+  border-color: var(--red);
+  box-shadow: 0 0 24px var(--red-glow);
+  transition: border-color 300ms, box-shadow 300ms;
+}
+
+/* About */
+.about-header {
+  display: flex; align-items: center; gap: 20px;
+  background: linear-gradient(135deg, var(--card), rgba(168, 85, 247, 0.04));
+  border: 1px solid var(--border-dim);
+  border-radius: 14px;
+  padding: 22px 24px;
+  margin-bottom: 16px;
+}
+.about-header img {
+  width: 72px; height: 72px;
+  flex-shrink: 0;
+  filter: drop-shadow(0 0 20px rgba(168, 85, 247,0.5));
+}
+.about-header-text { flex: 1; min-width: 0; }
+.about-name { font-size: 22px; font-weight: 700; }
+.about-version {
+  color: var(--text-dim); font-size: 12px; margin-top: 2px;
+  font-family: 'Consolas', 'Monaco', monospace;
+}
+.about-tag { color: var(--text-dim); font-size: 12px; margin-top: 8px; line-height: 1.5; }
+
+.about-card {
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 20px 22px;
+  margin-bottom: 14px;
+}
+.about-card h3 {
+  font-size: 14px; font-weight: 700;
+  margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.about-card p {
+  color: var(--text-dim); font-size: 12px; line-height: 1.6;
+  margin-bottom: 8px;
+}
+.about-card p:last-child { margin-bottom: 0; }
+.about-card strong { color: var(--text); font-weight: 600; }
+.about-flow {
+  list-style: none; padding: 0;
+  margin: 12px 0;
+}
+.about-flow li {
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  background: rgba(168, 85, 247, 0.04);
+  border-left: 3px solid var(--red);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}
+.about-note {
+  background: rgba(34, 197, 94, 0.06);
+  border-left: 3px solid var(--ok);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 11px !important;
+  margin-top: 10px;
+}
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 8px;
+}
+.tech-item {
+  background: var(--bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 12px 14px;
+  transition: border-color 200ms;
+}
+.tech-item:hover { border-color: var(--border); }
+.tech-name {
+  font-size: 13px; font-weight: 700;
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.tech-tag {
+  font-size: 9px; font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warn);
+  padding: 1px 6px;
+  border-radius: 3px;
+  letter-spacing: 0.5px;
+}
+.tech-desc {
+  color: var(--text-dim); font-size: 11px;
+  line-height: 1.5;
+  margin-bottom: 8px;
+}
+.req-list { display: flex; flex-direction: column; gap: 12px; }
+.req-item {
+  background: var(--bg);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+.req-head {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; margin-bottom: 6px;
+}
+.req-status {
+  font-size: 11px; font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--text-dim);
+}
+.req-status.ok {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--ok);
+}
+.req-status.missing {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--err);
+}
+.req-body {
+  color: var(--text-dim); font-size: 11px;
+  line-height: 1.6;
+}
+.req-install {
+  margin-top: 8px;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.req-install code,
+.about-card code {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-dim);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 10px;
+  color: var(--text);
+}
+.about-path {
+  display: block !important;
+  padding: 8px 12px !important;
+  margin: 8px 0;
+  word-break: break-all;
+  white-space: normal !important;
+}
+.shortcuts-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.shortcuts-table td {
+  padding: 6px 10px;
+  border-top: 1px solid var(--border-dim);
+  color: var(--text-dim);
+}
+.shortcuts-table tr:first-child td { border-top: none; }
+.shortcuts-table td:first-child { width: 100px; }
+kbd {
+  background: var(--card-2);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 11px;
+  color: var(--text);
+  font-weight: 600;
+}
+.about-foot {
+  color: var(--muted); font-size: 11px;
+  text-align: center;
+  margin-top: 24px;
+  padding: 16px;
+  border-top: 1px solid var(--border-dim);
+}
+
+@media (max-width: 900px) {
+  .tech-grid { grid-template-columns: 1fr; }
+}
+
+/* Cuenta */
+.account-status {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--card);
+  border: 1px solid var(--border-dim);
+  border-radius: 12px;
+  padding: 18px 22px;
+  margin-bottom: 16px;
+  transition: border-color 200ms;
+}
+.account-status.active {
+  border-color: rgba(34, 197, 94, 0.5);
+  background: linear-gradient(135deg, var(--card), rgba(34, 197, 94, 0.05));
+}
+.account-status.expired {
+  border-color: rgba(245, 158, 11, 0.5);
+  background: linear-gradient(135deg, var(--card), rgba(245, 158, 11, 0.05));
+}
+.account-status-icon {
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 700;
+  background: rgba(102, 102, 102, 0.15);
+  color: var(--muted);
+  flex-shrink: 0;
+  transition: all 200ms;
+}
+.account-status.active .account-status-icon {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--ok);
+  box-shadow: 0 0 24px rgba(34, 197, 94, 0.3);
+}
+.account-status.expired .account-status-icon {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warn);
+}
+.account-status-text { flex: 1; min-width: 0; }
+.account-status-title {
+  font-size: 16px; font-weight: 700; margin-bottom: 4px;
+}
+.account-status-sub {
+  font-size: 12px; color: var(--text-dim);
+  line-height: 1.5;
+}
+.btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: var(--err);
+}
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: var(--err);
+}
+.cookies-help-title {
+  font-size: 14px; font-weight: 700;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  padding: 4px 0;
+  display: flex; align-items: center;
+}
+.cookies-help-title::before {
+  content: "▸";
+  margin-right: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+  transition: transform 200ms;
+  display: inline-block;
+}
+details[open] .cookies-help-title::before {
+  transform: rotate(90deg);
+}
+.cookies-help-body {
+  padding: 14px 0 4px 0;
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.cookies-steps {
+  list-style: decimal;
+  padding-left: 24px;
+  margin: 0 0 14px 0;
+}
+.cookies-steps li { margin-bottom: 8px; }
+.cookies-steps strong { color: var(--text); }
+.ext-link {
+  color: var(--red);
+  text-decoration: none;
+  font-weight: 600;
+}
+.ext-link:hover { text-decoration: underline; }
+.cookies-warn {
+  background: rgba(245, 158, 11, 0.08);
+  border-left: 3px solid var(--warn);
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.cookies-warn code {
+  background: rgba(0,0,0,0.3);
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  color: var(--text);
+}
+#cookies-textarea {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+#cookies-textarea:focus {
+  border-color: var(--red);
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
+}
+.cookies-actions {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+.cookies-feedback {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-left: auto;
+  flex: 1;
+  text-align: right;
+  min-width: 200px;
+}
+.cookies-feedback.ok { color: var(--ok); }
+.cookies-feedback.err { color: var(--err); }
+.cookies-feedback.warn { color: var(--warn); }
+
+/* Badge en sidebar */
+.nav-badge {
+  margin-left: auto;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+  box-shadow: 0 0 8px var(--ok);
+  display: none;
+}
+.nav-badge.active { display: inline-block; }
+.nav-badge.warn { background: var(--warn); box-shadow: 0 0 8px var(--warn); }
+
+/* Modal de error con sugerencia */
+.error-banner {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(239, 68, 68, 0.02));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-left: 4px solid var(--err);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 14px;
+  display: none;
+}
+.error-banner.show { display: block; animation: fadeIn 240ms; }
+.error-banner-title {
+  font-size: 14px; font-weight: 700; color: var(--err);
+  margin-bottom: 6px;
+  display: flex; align-items: center; gap: 8px;
+}
+.error-banner-hint {
+  font-size: 12px; color: var(--text-dim);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.error-banner-action {
+  margin-top: 10px;
+}
+.error-banner-action .btn {
+  background: var(--red);
+  color: white;
+  border: none;
+  font-weight: 600;
+}
+.error-banner-action .btn:hover { background: var(--red-hover); }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 20px; right: 20px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--red);
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.2s, transform 0.2s;
+  pointer-events: none;
+  z-index: 1000;
+  max-width: 360px;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { border-left-color: var(--err); }
+.toast.ok { border-left-color: var(--ok); }
+.toast.warn { border-left-color: var(--warn); }
+.toast.reorder { border-left-color: var(--red); max-width: 420px; }
+.toast .toast-title {
+  font-weight: 700; font-size: 12px;
+  color: var(--red); margin-bottom: 6px;
+  display: flex; align-items: center; gap: 6px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.toast .toast-line {
+  font-size: 12px; line-height: 1.5;
+  color: var(--text-dim);
+  word-break: break-word;
+}
+.toast .toast-line.from {
+  text-decoration: line-through;
+  opacity: 0.7;
+  margin-bottom: 4px;
+}
+.toast .toast-line.to {
+  color: var(--text);
+  font-weight: 600;
+}
+.toast .toast-line .arrow { color: var(--red); margin-right: 4px; }
+
+/* Empty states */
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid var(--bg);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--card-2); }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <img id="brand-icon" alt="">
+      <span class="brand-title" id="brand-title">AKX Downloader</span>
+    </div>
+    <div class="brand-card"><img id="brand-card-icon" alt=""></div>
+    <nav>
+      <button class="nav-item active" data-page="download">
+        <span class="nav-icon">🏠</span><span>Descargar</span>
+      </button>
+      <button class="nav-item" data-page="player">
+        <span class="nav-icon">▶</span><span>Reproductor</span>
+      </button>
+      <button class="nav-item" data-page="history">
+        <span class="nav-icon">🕘</span><span>Historial</span>
+      </button>
+      <button class="nav-item" data-page="account">
+        <span class="nav-icon">👤</span><span>Cuenta</span>
+        <span class="nav-badge" id="nav-account-badge"></span>
+      </button>
+      <button class="nav-item" data-page="settings">
+        <span class="nav-icon">⚙</span><span>Configuración</span>
+      </button>
+      <button class="nav-item" data-page="about">
+        <span class="nav-icon">ⓘ</span><span>Acerca de</span>
+      </button>
+    </nav>
+    <div class="theme-toggle">
+      <span>🌙</span>
+      <span>Modo oscuro</span>
+      <label class="switch">
+        <input type="checkbox" id="theme-switch" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </aside>
+
+  <main class="content">
+    <!-- Página Descargar -->
+    <section class="page active" id="page-download">
+      <label class="field-label">URL del video o playlist</label>
+      <div class="input-group">
+        <span class="icon">🔗</span>
+        <input id="url-input" type="text" placeholder="Pega URL de YouTube, TikTok, X, Instagram, Facebook…">
+      </div>
+
+      <label class="field-label" id="folder-label">Carpeta de destino · MP3</label>
+      <div class="row">
+        <div class="input-group grow" style="margin-bottom:0">
+          <span class="icon">📁</span>
+          <input id="folder-input" type="text">
+        </div>
+        <button class="btn" id="btn-browse" style="height:46px">📂 Examinar</button>
+      </div>
+
+      <div class="twin" style="margin-top: 14px;">
+        <div>
+          <label class="field-label">Formato</label>
+          <div class="format-grid">
+            <div class="format-card selected" data-format="mp3">
+              <div class="format-icon">♪</div>
+              <div class="format-text">
+                <div class="format-title">MP3</div>
+                <div class="format-sub">320 kbps</div>
+              </div>
+              <div class="format-radio"></div>
+            </div>
+            <div class="format-card" data-format="mp4">
+              <div class="format-icon">▶</div>
+              <div class="format-text">
+                <div class="format-title">MP4</div>
+                <div class="format-sub">Mejor calidad</div>
+              </div>
+              <div class="format-radio"></div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <label class="field-label">Opciones</label>
+          <div class="options-card">
+            <div class="checkbox-wrap">
+              <label class="checkbox-label">
+                <input type="checkbox" id="auto-clean" checked>
+                <span class="checkbox"></span>
+                <span>Limpiar nombres automáticamente</span>
+              </label>
+              <span class="checkbox-hint">Quita IDs y etiquetas tipo "Official Video"</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" id="btn-download">⬇ Descargar</button>
+        <button class="btn secondary" id="btn-cancel" disabled>⏹ Cancelar</button>
+      </div>
+
+      <!-- Banner de error con sugerencia accionable -->
+      <div class="error-banner" id="error-banner">
+        <div class="error-banner-title">
+          <span>⚠</span>
+          <span id="error-banner-title">Error</span>
+        </div>
+        <div class="error-banner-hint" id="error-banner-hint"></div>
+        <div class="error-banner-action" id="error-banner-action"></div>
+      </div>
+
+      <div class="download-card">
+        <div class="thumb is-default" id="dl-thumb"><span class="thumb-glyph">♪</span></div>
+        <div class="dl-info">
+          <div class="dl-playlist-badge" id="dl-playlist-badge" style="display:none">
+            <span class="pl-icon">📃</span>
+            <span id="dl-playlist-text">Playlist · 0/0</span>
+            <div class="pl-mini-bar"><div class="pl-mini-fill" id="dl-playlist-fill"></div></div>
+          </div>
+          <div class="dl-header">
+            <div class="dl-title" id="dl-title">Sin descarga activa</div>
+            <div class="dl-pct" id="dl-pct"></div>
+          </div>
+          <div class="progress-bar"><div class="progress-fill" id="dl-fill"></div></div>
+          <div class="dl-stats" id="dl-stats">—</div>
+        </div>
+      </div>
+
+      <div class="section-header">
+        <div class="section-title">Historial reciente</div>
+        <button class="btn" id="btn-see-all" style="height:30px; padding:0 14px; font-size:11px">Ver todo</button>
+      </div>
+      <div id="recent-list"></div>
+    </section>
+
+    <!-- Página Reproductor -->
+    <section class="page" id="page-player">
+      <h1 class="page-title">Reproductor</h1>
+      <div class="player-layout">
+        <div class="player-files">
+          <div class="player-files-header">
+            <div class="player-toggle">
+              <button class="player-toggle-btn active" data-source="audio">
+                <span class="toggle-glyph">♪</span> Audio
+              </button>
+              <button class="player-toggle-btn" data-source="video">
+                <span class="toggle-glyph">▶</span> Video
+              </button>
+            </div>
+            <button class="btn" id="btn-player-folder" style="width:100%; margin-top: 8px;">📂 Cambiar carpeta</button>
+            <div class="player-files-folder" id="player-folder">—</div>
+          </div>
+          <div class="file-list" id="player-file-list"></div>
+        </div>
+        <div class="player-main" id="player-main">
+          <div class="player-empty">
+            <div class="icon">▶</div>
+            <div>Selecciona un archivo para reproducir</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Página Historial -->
+    <section class="page" id="page-history">
+      <div class="section-header" style="margin-bottom:18px">
+        <h1 class="page-title" style="margin-bottom:0">Historial</h1>
+        <button class="btn" id="btn-clear-history">🗑 Vaciar historial</button>
+      </div>
+      <div id="history-list"></div>
+    </section>
+
+    <!-- Página Cuenta -->
+    <section class="page" id="page-account">
+      <h1 class="page-title">Cuenta</h1>
+
+      <!-- Estado actual -->
+      <div class="account-status" id="account-status">
+        <div class="account-status-icon" id="account-status-icon">○</div>
+        <div class="account-status-text">
+          <div class="account-status-title" id="account-status-title">Sin sesión</div>
+          <div class="account-status-sub" id="account-status-sub">
+            No hay cookies guardadas. Algunos videos pueden requerir iniciar sesión.
+          </div>
+        </div>
+        <button class="btn btn-danger" id="btn-clear-cookies" style="display:none">
+          Cerrar sesión
+        </button>
+      </div>
+
+      <!-- NUEVO: Cookies desde navegador (método fácil, multiplataforma) -->
+      <div class="settings-card" id="browser-cookies-card">
+        <h3>🌐 Cookies desde navegador <span style="font-size:11px;color:var(--ok);font-weight:normal;">— método recomendado</span></h3>
+        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 14px;">
+          yt-dlp lee las cookies de sesión activa directamente de tu navegador — no
+          necesitás exportar nada. Compatible con <strong>YouTube, Instagram,
+          Facebook, X (Twitter), TikTok</strong> y todas las plataformas soportadas
+          por yt-dlp. Solo elegí el navegador donde ya tenés la sesión iniciada.
+        </p>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+          <label style="font-size:13px; color:var(--text-dim); min-width:80px;">Navegador:</label>
+          <select id="browser-cookies-select"
+                  style="flex:1; min-width:180px; padding:10px 12px;
+                         background:var(--bg-2, #1a1a1a); color:var(--text);
+                         border:1px solid var(--border, #333); border-radius:10px;
+                         font-size:14px; height:44px;">
+            <option value="">— Ninguno (usar cookies.txt manual si existe) —</option>
+            <option value="chrome">Google Chrome</option>
+            <option value="firefox">Firefox</option>
+            <option value="edge">Microsoft Edge</option>
+            <option value="brave">Brave</option>
+            <option value="opera">Opera</option>
+            <option value="safari">Safari (macOS)</option>
+            <option value="chromium">Chromium</option>
+            <option value="vivaldi">Vivaldi</option>
+          </select>
+          <button class="btn btn-primary" id="btn-save-browser-cookies" style="height:44px;">
+            💾 Guardar
+          </button>
+        </div>
+        <p style="font-size:11px; color:var(--text-dim); margin-top:10px;">
+          ⚠ En Chrome/Edge modernos puede pedir cerrar el navegador antes de leer las cookies (por bloqueo de la BD SQLite).
+        </p>
+        <span class="cookies-feedback" id="browser-cookies-feedback" style="margin-top:8px; display:block;"></span>
+      </div>
+
+      <!-- NUEVO: Panel Telegram (Telethon para grupos privados) -->
+      <div class="settings-card" id="telegram-card">
+        <h3>📱 Telegram <span style="font-size:11px;color:var(--text-dim);font-weight:normal;">— grupos y canales privados</span></h3>
+        <p style="font-size:12px; color:var(--text-dim); margin-bottom:14px;">
+          yt-dlp no puede acceder a Telegram privado (protocolo MTProto).
+          Con tus credenciales de la API de Telegram descargamos directamente,
+          igual que hace la app oficial.
+        </p>
+
+        <!-- Estado: Telethon no instalado -->
+        <div id="tg-noinstall" style="display:none; padding:12px; background:var(--bg-2,#1a1a1a); border-radius:8px; margin-bottom:12px;">
+          <p style="color:var(--warn,#f5c518); margin:0; font-size:13px;">
+            ⚠ Telethon no está instalado. Ejecuta en tu terminal:
+          </p>
+          <code style="display:block; margin-top:8px; padding:8px; background:var(--bg-3,#0d0d0d); border-radius:6px; font-size:12px;">pip install telethon</code>
+          <p style="margin-top:8px; margin-bottom:0; font-size:12px; color:var(--text-dim);">
+            Después cerrá y volvé a abrir la app.
+          </p>
+        </div>
+
+        <!-- Paso 1: credenciales API -->
+        <div id="tg-step-creds" style="display:none;">
+          <p style="font-size:13px; margin-bottom:10px;">
+            <strong>Paso 1:</strong> ir a <a href="#" data-url="https://my.telegram.org" class="ext-link">my.telegram.org</a>,
+            login con tu número, "API Development Tools", crear una app (poné cualquier nombre).
+            Copiá el <strong>App api_id</strong> y <strong>App api_hash</strong>:
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <input id="tg-api-id" placeholder="API ID (número)" type="text"
+                   style="flex:1; min-width:120px; padding:10px 12px; background:var(--bg-2,#1a1a1a); color:var(--text); border:1px solid var(--border,#333); border-radius:10px; font-size:14px; height:44px;">
+            <input id="tg-api-hash" placeholder="API Hash (32 caracteres)" type="text"
+                   style="flex:2; min-width:180px; padding:10px 12px; background:var(--bg-2,#1a1a1a); color:var(--text); border:1px solid var(--border,#333); border-radius:10px; font-size:14px; height:44px;">
+            <button class="btn btn-primary" id="btn-tg-save-creds" style="height:44px;">Guardar</button>
+          </div>
+        </div>
+
+        <!-- Paso 2: teléfono -->
+        <div id="tg-step-phone" style="display:none;">
+          <p style="font-size:13px; margin-bottom:10px;">
+            <strong>Paso 2:</strong> tu número de teléfono con código de país (ej: +54911...):
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <input id="tg-phone" placeholder="+549..." type="tel"
+                   style="flex:1; min-width:180px; padding:10px 12px; background:var(--bg-2,#1a1a1a); color:var(--text); border:1px solid var(--border,#333); border-radius:10px; font-size:14px; height:44px;">
+            <button class="btn btn-primary" id="btn-tg-send-code" style="height:44px;">📩 Enviar código</button>
+            <button class="btn" id="btn-tg-back-creds" style="height:44px;">← Cambiar API</button>
+          </div>
+        </div>
+
+        <!-- Paso 3: código + 2FA opcional -->
+        <div id="tg-step-code" style="display:none;">
+          <p style="font-size:13px; margin-bottom:10px;">
+            <strong>Paso 3:</strong> el código llega por Telegram (en la app oficial, chat "Telegram").
+            Si tenés verificación en dos pasos activada, poné también la contraseña:
+          </p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px;">
+            <input id="tg-code" placeholder="Código (5 dígitos)" type="text" maxlength="10"
+                   style="flex:1; min-width:120px; padding:10px 12px; background:var(--bg-2,#1a1a1a); color:var(--text); border:1px solid var(--border,#333); border-radius:10px; font-size:14px; height:44px;">
+            <input id="tg-password" placeholder="Contraseña 2FA (opcional)" type="password"
+                   style="flex:1; min-width:150px; padding:10px 12px; background:var(--bg-2,#1a1a1a); color:var(--text); border:1px solid var(--border,#333); border-radius:10px; font-size:14px; height:44px;">
+            <button class="btn btn-primary" id="btn-tg-signin" style="height:44px;">🔐 Ingresar</button>
+          </div>
+        </div>
+
+        <!-- Paso 4: conectado -->
+        <div id="tg-step-connected" style="display:none;">
+          <div style="display:flex; align-items:center; gap:12px; padding:12px; background:var(--bg-2,#1a1a1a); border-radius:10px; border-left:3px solid var(--ok,#22c55e);">
+            <div style="font-size:24px;">✓</div>
+            <div style="flex:1;">
+              <div style="font-weight:600;">Conectado a Telegram</div>
+              <div id="tg-user-info" style="font-size:12px; color:var(--text-dim);"></div>
+            </div>
+            <button class="btn btn-danger" id="btn-tg-logout">Cerrar sesión</button>
+          </div>
+          <p style="font-size:12px; color:var(--text-dim); margin-top:12px;">
+            Ahora podés pegar links tipo <code>https://t.me/c/1234567890/456</code> (grupos privados)
+            o <code>https://t.me/nombregrupo/456</code> (públicos) en el input principal.
+          </p>
+        </div>
+
+        <span class="cookies-feedback" id="tg-feedback" style="margin-top:8px; display:block;"></span>
+      </div>
+
+      <!-- Instrucciones expandibles -->
+      <details class="settings-card" id="cookies-help">
+        <summary class="cookies-help-title">Método manual: pegar cookies.txt</summary>
+        <div class="cookies-help-body">
+          <p style="margin-bottom: 12px;">
+            Alternativa si preferís no usar el navegador directamente: exportá tus cookies
+            en <strong>formato Netscape</strong> con una extensión:
+          </p>
+          <ol class="cookies-steps">
+            <li>
+              Instalá la extensión <strong>“Get cookies.txt LOCALLY”</strong>
+              en <a href="#" data-url="https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc" class="ext-link">Chrome / Edge</a>
+              o <a href="#" data-url="https://addons.mozilla.org/firefox/addon/cookies-txt/" class="ext-link">Firefox</a>.
+            </li>
+            <li>Andá a <strong>youtube.com</strong> con tu sesión iniciada.</li>
+            <li>Click en el ícono de la extensión → <strong>“Export As → cookies.txt”</strong>.</li>
+            <li>Abrí el archivo descargado con un editor de texto.</li>
+            <li>Copiá <strong>todo el contenido</strong> y pegalo abajo.</li>
+          </ol>
+          <p class="cookies-warn">
+            ⚠ Las cookies son sensibles: dan acceso a tu cuenta. Esta app las guarda
+            solo en tu propia PC, en <code id="cookies-path-display"></code> con permisos
+            restringidos. Nunca se envían a ningún lado salvo a YouTube cuando descargás.
+          </p>
+        </div>
+      </details>
+
+      <!-- Textarea para pegar -->
+      <div class="settings-card">
+        <h3>Pegar cookies</h3>
+        <textarea id="cookies-textarea"
+          placeholder="# Netscape HTTP Cookie File&#10;.youtube.com&#9;TRUE&#9;/&#9;TRUE&#9;1234567890&#9;NID&#9;...&#10;..."
+          spellcheck="false"></textarea>
+        <div class="cookies-actions">
+          <button class="btn btn-primary" id="btn-save-cookies">
+            💾 Guardar sesión
+          </button>
+          <button class="btn" id="btn-paste-cookies">
+            📋 Pegar desde portapapeles
+          </button>
+          <span class="cookies-feedback" id="cookies-feedback"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Página Configuración -->
+    <section class="page" id="page-settings">
+      <h1 class="page-title">Configuración</h1>
+
+      <div class="settings-card">
+        <h3>📁 Carpetas de descarga</h3>
+        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 14px;">
+          Podés tener carpetas separadas para audio y video. Cada formato se guardará automáticamente en la suya.
+        </p>
+        <div class="folder-setting">
+          <label class="folder-setting-label">
+            <span class="folder-icon">♪</span>
+            <span>Carpeta para MP3 (audio)</span>
+          </label>
+          <div class="row" style="gap: 8px; margin-bottom: 12px;">
+            <div class="input-group grow" style="margin-bottom:0">
+              <span class="icon">📁</span>
+              <input id="folder-audio-input" type="text">
+            </div>
+            <button class="btn" id="btn-browse-audio" style="height:46px">📂 Examinar</button>
+          </div>
+        </div>
+        <div class="folder-setting">
+          <label class="folder-setting-label">
+            <span class="folder-icon">▶</span>
+            <span>Carpeta para MP4 (video)</span>
+          </label>
+          <div class="row" style="gap: 8px;">
+            <div class="input-group grow" style="margin-bottom:0">
+              <span class="icon">📁</span>
+              <input id="folder-video-input" type="text">
+            </div>
+            <button class="btn" id="btn-browse-video" style="height:46px">📂 Examinar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Calidad</h3>
+        <div class="settings-row">
+          <span class="label">Calidad MP3 (kbps)</span>
+          <select id="audio-kbps">
+            <option value="320">320</option>
+            <option value="256">256</option>
+            <option value="192">192</option>
+            <option value="128">128</option>
+          </select>
+        </div>
+        <div class="settings-row">
+          <span class="label">Calidad MP4</span>
+          <select id="video-quality">
+            <option value="best">Mejor disponible</option>
+            <option value="1080">1080p</option>
+            <option value="720">720p</option>
+            <option value="480">480p</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Nombres de archivo</h3>
+        <label class="checkbox-label" style="align-items: flex-start; padding: 4px 0;">
+          <input type="checkbox" id="clean-video-names">
+          <span class="checkbox" style="margin-top: 2px;"></span>
+          <span style="font-weight: 600;">
+            Limpiar también nombres de videos (MP4)
+            <div style="font-weight: normal; color: var(--text-dim); font-size: 11px; margin-top: 4px; line-height: 1.5;">
+              Por defecto solo se limpian los audios. Los videos suelen ser tutoriales,
+              gameplays o podcasts cuyos títulos descriptivos conviene preservar.
+              Aún así, el ID de YouTube <code style="font-size:10px;">[abc123]</code> al final del nombre siempre se quita.
+            </div>
+          </span>
+        </label>
+        <button class="btn" id="btn-clean-folder" style="margin-top: 14px;">🧹 Limpiar nombres en una carpeta…</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>⚙ FFmpeg</h3>
+        <div class="ffmpeg-status" id="ffmpeg-status">
+          <div class="ffmpeg-status-row">
+            <span class="env-led" id="ffmpeg-led"></span>
+            <span class="ffmpeg-status-title" id="ffmpeg-status-title">—</span>
+          </div>
+          <div class="ffmpeg-status-version" id="ffmpeg-status-version"></div>
+          <div class="ffmpeg-status-path" id="ffmpeg-status-path"></div>
+        </div>
+        <div class="ffmpeg-actions">
+          <button class="btn primary" id="btn-ffmpeg-autodetect">🔍 Buscar automáticamente</button>
+          <button class="btn" id="btn-ffmpeg-browse">📂 Seleccionar manualmente…</button>
+          <button class="btn" id="btn-ffmpeg-reset" style="display:none">↻ Usar PATH del sistema</button>
+        </div>
+        <details class="ffmpeg-help">
+          <summary>¿Dónde encuentro ffmpeg.exe?</summary>
+          <div class="ffmpeg-help-body">
+            <p style="margin-bottom: 10px;">
+              Si instalaste con <code>winget install Gyan.FFmpeg</code>, suele estar en:
+            </p>
+            <code class="about-path">C:\Users\TU_USUARIO\AppData\Local\Microsoft\WinGet\Packages\Gyan.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe\ffmpeg-VERSIÓN-full_build\bin\ffmpeg.exe</code>
+            <p style="margin-top: 10px;">
+              Tip: en el diálogo de selección, podés pegar la ruta directamente
+              en el campo "Nombre" del explorador para llegar más rápido.
+            </p>
+          </div>
+        </details>
+      </div>
+
+      <div class="settings-card" id="ytdlp-card">
+        <h3>⬆ Motor de descarga (yt-dlp)</h3>
+        <p style="font-size: 12px; color: var(--text-dim); margin-bottom: 14px;">
+          YouTube y las demás plataformas cambian seguido, y un yt-dlp viejo es
+          la causa más común de errores 403 o "no se encontró formato".
+          Mantenelo al día desde acá.
+        </p>
+        <div class="updater-status">
+          <div class="updater-status-row">
+            <span class="env-led" id="ytdlp-led"></span>
+            <span class="updater-status-title" id="ytdlp-version-title">—</span>
+          </div>
+          <div class="updater-status-sub" id="ytdlp-origin"></div>
+          <div class="updater-status-path" id="ytdlp-path"></div>
+        </div>
+        <div class="updater-actions">
+          <button class="btn" id="btn-ytdlp-check">🔄 Buscar actualizaciones</button>
+          <button class="btn primary" id="btn-ytdlp-update"
+                  style="display:none; height:44px; flex:0 0 auto;">⬆ Actualizar ahora</button>
+          <button class="btn" id="btn-ytdlp-restart" style="display:none">↻ Reiniciar app</button>
+          <button class="btn" id="btn-ytdlp-restore" style="display:none">🗑 Volver a la versión empaquetada</button>
+        </div>
+        <div class="updater-progress" id="ytdlp-progress">
+          <div class="updater-progress-fill" id="ytdlp-progress-fill"></div>
+        </div>
+        <div class="updater-feedback" id="ytdlp-feedback"></div>
+        <label class="checkbox-label" style="margin-top: 12px; font-weight: 600;">
+          <input type="checkbox" id="ytdlp-auto-check">
+          <span class="checkbox"></span>
+          <span>Buscar actualizaciones al iniciar la app</span>
+        </label>
+        <div class="updater-hint" id="ytdlp-hint"></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Entorno</h3>
+        <div id="env-info"></div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Datos de la app</h3>
+        <div style="font-size: 11px; color: var(--text-dim); word-break: break-all;" id="data-dir-info"></div>
+      </div>
+    </section>
+
+    <!-- Página Acerca de -->
+    <section class="page" id="page-about">
+      <!-- Header con logo y nombre -->
+      <div class="about-header">
+        <img id="about-icon" alt="">
+        <div class="about-header-text">
+          <div class="about-name" id="about-name">AKX Downloader</div>
+          <div class="about-version" id="about-version">Versión —</div>
+          <div class="about-tag">Descargador portable de YouTube en MP3 y MP4 con interfaz moderna</div>
+        </div>
+      </div>
+
+      <!-- Cómo funciona -->
+      <div class="about-card">
+        <h3>⚙ ¿Cómo funciona?</h3>
+        <p>Cuando le pegás una URL, la app descarga el video con <strong>yt-dlp</strong> (motor de descarga) y, según el formato elegido, lo procesa con <strong>FFmpeg</strong>:</p>
+        <ul class="about-flow">
+          <li><strong>MP3</strong>: extrae solo la pista de audio y la convierte al bitrate elegido (320/256/192/128 kbps), incrustando la portada del video como tag.</li>
+          <li><strong>MP4</strong>: descarga video + audio por separado y los une en un único contenedor MP4 con la calidad seleccionada (best/1080/720/480p).</li>
+        </ul>
+        <p class="about-note">Toda la actividad ocurre <strong>localmente en tu PC</strong>. La app no envía nada a ningún servidor propio.</p>
+      </div>
+
+      <!-- Tecnologías usadas -->
+      <div class="about-card">
+        <h3>🧩 Tecnologías y librerías usadas</h3>
+        <div class="tech-grid">
+          <div class="tech-item">
+            <div class="tech-name">yt-dlp</div>
+            <div class="tech-desc">Motor que se conecta a YouTube y descarga audio/video. Mantiene compatibilidad con cambios constantes del sitio.</div>
+            <a href="#" data-url="https://github.com/yt-dlp/yt-dlp" class="ext-link">github.com/yt-dlp/yt-dlp →</a>
+          </div>
+          <div class="tech-item">
+            <div class="tech-name">FFmpeg</div>
+            <div class="tech-desc">Conversor multimedia universal. Aquí lo usamos para extraer audio de los videos y convertirlo a MP3, y para mezclar pistas de video y audio en MP4.</div>
+            <a href="#" data-url="https://ffmpeg.org/" class="ext-link">ffmpeg.org →</a>
+          </div>
+          <div class="tech-item">
+            <div class="tech-name">PyWebView</div>
+            <div class="tech-desc">Permite construir interfaces de escritorio con HTML/CSS/JS usando el WebView nativo del sistema operativo (Edge en Windows, WebKit en macOS, GTK en Linux).</div>
+            <a href="#" data-url="https://pywebview.flowrl.com/" class="ext-link">pywebview.flowrl.com →</a>
+          </div>
+          <div class="tech-item">
+            <div class="tech-name">mutagen</div>
+            <div class="tech-desc">Lectura y escritura de tags de audio. La usamos para extraer las portadas embebidas en los MP3 y mostrarlas en el reproductor.</div>
+            <a href="#" data-url="https://mutagen.readthedocs.io/" class="ext-link">mutagen.readthedocs.io →</a>
+          </div>
+          <div class="tech-item">
+            <div class="tech-name">send2trash <span class="tech-tag">opcional</span></div>
+            <div class="tech-desc">Cuando borrás un archivo desde el reproductor, lo manda a la papelera del sistema en lugar de eliminarlo definitivamente. Si no está instalado, se borra directo.</div>
+            <a href="#" data-url="https://pypi.org/project/Send2Trash/" class="ext-link">pypi.org/project/Send2Trash →</a>
+          </div>
+          <div class="tech-item">
+            <div class="tech-name">Pillow</div>
+            <div class="tech-desc">Procesamiento de imágenes. Usado para el ícono de la aplicación.</div>
+            <a href="#" data-url="https://python-pillow.org/" class="ext-link">python-pillow.org →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Requisitos -->
+      <div class="about-card">
+        <h3>📋 Requisitos del sistema</h3>
+        <div class="req-list">
+          <div class="req-item">
+            <div class="req-head"><strong>Python 3.8 o superior</strong></div>
+            <div class="req-body">Necesario para correr la aplicación.</div>
+            <a href="#" data-url="https://www.python.org/downloads/" class="ext-link">python.org/downloads →</a>
+          </div>
+          <div class="req-item">
+            <div class="req-head">
+              <strong>FFmpeg en PATH</strong>
+              <span class="req-status" id="req-ffmpeg">comprobando…</span>
+            </div>
+            <div class="req-body">Necesario para convertir a MP3 y para fusionar video+audio en MP4. Sin esto solo podés guardar formatos crudos.</div>
+            <div class="req-install">
+              <code>winget install Gyan.FFmpeg</code> (Windows)<br>
+              <code>brew install ffmpeg</code> (macOS)<br>
+              <code>sudo apt install ffmpeg</code> (Linux Debian/Ubuntu)
+            </div>
+            <a href="#" data-url="https://ffmpeg.org/download.html" class="ext-link">ffmpeg.org/download →</a>
+          </div>
+          <div class="req-item">
+            <div class="req-head"><strong>Paquetes Python</strong></div>
+            <div class="req-install">
+              <code>pip install pywebview yt-dlp Pillow mutagen send2trash</code>
+            </div>
+            <div class="req-body" style="margin-top: 8px;">
+              En Linux además necesitás un backend gráfico para PyWebView:<br>
+              <code>pip install 'pywebview[gtk]'</code> o <code>pip install 'pywebview[qt]'</code>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos de la app -->
+      <div class="about-card">
+        <h3>💾 Datos de la aplicación</h3>
+        <p>La app guarda tu configuración, historial y cookies de sesión en:</p>
+        <code class="about-path" id="about-data-dir">—</code>
+        <p class="about-note">No se transmite ningún dato a Anthropic ni a ningún tercero. Las cookies, si las cargás, solo se usan para autenticarte ante YouTube cuando descargás.</p>
+      </div>
+
+      <!-- Atajos de teclado -->
+      <div class="about-card">
+        <h3>⌨ Atajos de teclado</h3>
+        <table class="shortcuts-table">
+          <tr><td><kbd>Enter</kbd></td><td>en el campo URL — iniciar descarga</td></tr>
+          <tr><td><kbd>Enter</kbd></td><td>en input de renombrado — confirmar</td></tr>
+          <tr><td><kbd>Esc</kbd></td><td>en input de renombrado — cancelar</td></tr>
+          <tr><td><kbd>Espacio</kbd></td><td>en el reproductor — play / pausa</td></tr>
+        </table>
+      </div>
+
+      <div class="about-foot">
+        Para uso personal. Respetá los términos de servicio de las plataformas de origen y los derechos de autor del contenido descargado.
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+let env = {};
+let settings = {};
+let currentFormat = 'mp3';
+let pollTimer = null;
+let playerFolder = null;
+let playerSource = 'audio';   // 'audio' o 'video' — alterna entre las dos carpetas
+let currentlyPlaying = null;
+let lastStatus = '';
+let ytdlpInfo = {};
+let ytdlpPollTimer = null;
+const historyById = {};
+
+// Wait for PyWebView API
+window.addEventListener('pywebviewready', async () => {
+  try {
+    env = await pywebview.api.get_env();
+    settings = await pywebview.api.get_settings();
+    initUI();
+    refreshHistory();
+    refreshCookiesStatus();
+    startPolling();
+    refreshYtdlpCard();
+    if (settings.ytdlp_auto_check) autoCheckYtdlp();
+  } catch (err) {
+    console.error('Init error:', err);
+    showToast('Error al inicializar: ' + err, 'error');
+  }
+});
+
+function initUI() {
+  // Iconos / textos
+  if (env.icon_data) {
+    document.getElementById('brand-icon').src = env.icon_data;
+    document.getElementById('brand-card-icon').src = env.icon_data;
+    document.getElementById('about-icon').src = env.icon_data;
+  }
+  document.getElementById('brand-title').textContent = env.app_name;
+  document.getElementById('about-name').textContent = env.app_name;
+  document.getElementById('about-version').textContent = `Versión ${env.app_version}`;
+  document.title = env.app_name;
+
+  // About: ruta de datos y estado de FFmpeg
+  document.getElementById('about-data-dir').textContent = env.data_dir;
+  const reqFfmpeg = document.getElementById('req-ffmpeg');
+  if (env.ffmpeg_present) {
+    reqFfmpeg.textContent = '✓ detectado';
+    reqFfmpeg.className = 'req-status ok';
+  } else {
+    reqFfmpeg.textContent = '✗ falta';
+    reqFfmpeg.className = 'req-status missing';
+  }
+
+  // Settings -> UI
+  document.getElementById('auto-clean').checked = !!settings.auto_clean_names;
+  document.getElementById('clean-video-names').checked = !!settings.clean_video_names;
+  document.getElementById('audio-kbps').value = settings.audio_kbps || '320';
+  document.getElementById('video-quality').value = settings.video_quality || 'best';
+  // Carpetas separadas en la página Configuración
+  document.getElementById('folder-audio-input').value =
+    settings.download_dir_audio || settings.download_dir || '';
+  document.getElementById('folder-video-input').value =
+    settings.download_dir_video || settings.download_dir || '';
+  // selectFormat también actualiza el folder-input de la página Descargar
+  selectFormat(settings.default_format || 'mp3', false);
+
+  // Env info: solo info adicional (FFmpeg tiene su propia card)
+  // En el futuro podría incluir otros chequeos (yt-dlp version, mutagen, etc.)
+  const envEl = document.getElementById('env-info');
+  envEl.innerHTML = `<div class="settings-row">
+    <span><span class="env-led on"></span><strong>App</strong></span>
+    <span class="label">${escapeHtml(env.app_name)} v${escapeHtml(env.app_version)}</span>
+  </div>`;
+  document.getElementById('data-dir-info').textContent = env.data_dir;
+
+  // Renderizar estado de FFmpeg (card dedicada)
+  renderFfmpegStatus(env);
+
+  // Listeners de navegación
+  document.querySelectorAll('.nav-item').forEach(b => {
+    b.addEventListener('click', () => navTo(b.dataset.page));
+  });
+  // Listeners de formato
+  document.querySelectorAll('.format-card').forEach(c => {
+    c.addEventListener('click', () => selectFormat(c.dataset.format));
+  });
+  // Listeners de settings
+  document.getElementById('auto-clean').addEventListener('change', (e) => saveSetting('auto_clean_names', e.target.checked));
+  document.getElementById('clean-video-names').addEventListener('change', (e) => saveSetting('clean_video_names', e.target.checked));
+  document.getElementById('audio-kbps').addEventListener('change', (e) => saveSetting('audio_kbps', e.target.value));
+  document.getElementById('video-quality').addEventListener('change', (e) => saveSetting('video_quality', e.target.value));
+  document.getElementById('folder-input').addEventListener('change', (e) => {
+    const key = currentFormat === 'mp3' ? 'download_dir_audio' : 'download_dir_video';
+    saveSetting(key, e.target.value);
+  });
+
+  // Carpetas separadas (página Configuración)
+  document.getElementById('folder-audio-input').addEventListener('change', (e) => {
+    saveSetting('download_dir_audio', e.target.value);
+    // Si actualmente el formato es mp3, reflejar en la página Descargar
+    if (currentFormat === 'mp3') {
+      document.getElementById('folder-input').value = e.target.value;
+    }
+  });
+  document.getElementById('folder-video-input').addEventListener('change', (e) => {
+    saveSetting('download_dir_video', e.target.value);
+    if (currentFormat === 'mp4') {
+      document.getElementById('folder-input').value = e.target.value;
+    }
+  });
+  document.getElementById('btn-browse-audio').addEventListener('click', async () => {
+    const folder = await pywebview.api.browse_folder('audio');
+    if (folder) {
+      document.getElementById('folder-audio-input').value = folder;
+      saveSetting('download_dir_audio', folder);
+      if (currentFormat === 'mp3') {
+        document.getElementById('folder-input').value = folder;
+      }
+      showToast('Carpeta de audio actualizada', 'ok');
+    }
+  });
+  document.getElementById('btn-browse-video').addEventListener('click', async () => {
+    const folder = await pywebview.api.browse_folder('video');
+    if (folder) {
+      document.getElementById('folder-video-input').value = folder;
+      saveSetting('download_dir_video', folder);
+      if (currentFormat === 'mp4') {
+        document.getElementById('folder-input').value = folder;
+      }
+      showToast('Carpeta de video actualizada', 'ok');
+    }
+  });
+
+  // Botones
+  document.getElementById('btn-browse').addEventListener('click', browseFolder);
+  document.getElementById('btn-download').addEventListener('click', startDownload);
+  document.getElementById('btn-cancel').addEventListener('click', cancelDownload);
+  document.getElementById('btn-see-all').addEventListener('click', () => navTo('history'));
+  document.getElementById('btn-player-folder').addEventListener('click', changePlayerFolder);
+
+  // Toggle audio/video del reproductor
+  document.querySelectorAll('.player-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchPlayerSource(btn.dataset.source));
+  });
+  document.getElementById('btn-clear-history').addEventListener('click', clearHistory);
+  document.getElementById('btn-clean-folder').addEventListener('click', cleanFolder);
+
+  // FFmpeg
+  document.getElementById('btn-ffmpeg-autodetect').addEventListener('click', autodetectFfmpeg);
+  document.getElementById('btn-ffmpeg-browse').addEventListener('click', browseFfmpegPath);
+  document.getElementById('btn-ffmpeg-reset').addEventListener('click', resetFfmpegPath);
+
+  // yt-dlp (actualizador)
+  document.getElementById('btn-ytdlp-check').addEventListener('click', () => checkYtdlpUpdate(false));
+  document.getElementById('btn-ytdlp-update').addEventListener('click', startYtdlpUpdate);
+  document.getElementById('btn-ytdlp-restart').addEventListener('click', restartApp);
+  document.getElementById('btn-ytdlp-restore').addEventListener('click', restoreBundledYtdlp);
+  document.getElementById('ytdlp-auto-check').checked = settings.ytdlp_auto_check !== false;
+  document.getElementById('ytdlp-auto-check').addEventListener('change',
+    (e) => saveSetting('ytdlp_auto_check', e.target.checked));
+
+  // Cookies / Cuenta
+  document.getElementById('btn-save-cookies').addEventListener('click', saveCookies);
+  document.getElementById('btn-clear-cookies').addEventListener('click', clearCookiesAction);
+  document.getElementById('btn-paste-cookies').addEventListener('click', pasteFromClipboard);
+  // Cookies desde navegador (nuevo)
+  document.getElementById('btn-save-browser-cookies').addEventListener('click', saveBrowserCookies);
+  loadBrowserCookies();
+
+  // Telegram (Telethon)
+  document.getElementById('btn-tg-save-creds').addEventListener('click', tgSaveCreds);
+  document.getElementById('btn-tg-send-code').addEventListener('click', tgSendCode);
+  document.getElementById('btn-tg-signin').addEventListener('click', tgSignIn);
+  document.getElementById('btn-tg-logout').addEventListener('click', tgLogout);
+  document.getElementById('btn-tg-back-creds').addEventListener('click', tgBackToCreds);
+  // Enter en los campos
+  ['tg-api-hash', 'tg-api-id'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') tgSaveCreds(); });
+  });
+  document.getElementById('tg-phone').addEventListener('keydown', e => { if (e.key === 'Enter') tgSendCode(); });
+  document.getElementById('tg-code').addEventListener('keydown', e => { if (e.key === 'Enter') tgSignIn(); });
+  document.getElementById('tg-password').addEventListener('keydown', e => { if (e.key === 'Enter') tgSignIn(); });
+  refreshTelegramStatus();
+  document.getElementById('cookies-path-display').textContent =
+    env.data_dir + (env.data_dir.includes('\\') ? '\\cookies.txt' : '/cookies.txt');
+  // Links externos: abrir en navegador del sistema
+  document.querySelectorAll('.ext-link').forEach(a => {
+    a.addEventListener('click', (e) => {
+      e.preventDefault();
+      const u = a.dataset.url;
+      if (u && pywebview.api.open_external) {
+        pywebview.api.open_external(u);
+      } else if (u) {
+        window.open(u, '_blank');
+      }
+    });
+  });
+
+  // Tema
+  document.getElementById('theme-switch').addEventListener('change', (e) => {
+    document.body.classList.toggle('light', !e.target.checked);
+  });
+
+  // Enter en URL
+  document.getElementById('url-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') startDownload();
+  });
+}
+
+function navTo(page) {
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.page === page));
+  document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.id === `page-${page}`));
+  if (page === 'history') refreshHistory();
+  if (page === 'player') openPlayerPage();
+  if (page === 'account') refreshCookiesStatus();
+  if (page === 'account') refreshTelegramStatus();
+  if (page === 'settings') refreshYtdlpCard();
+}
+
+function selectFormat(fmt, persist = true) {
+  currentFormat = fmt;
+  document.querySelectorAll('.format-card').forEach(c =>
+    c.classList.toggle('selected', c.dataset.format === fmt)
+  );
+  // Actualizar el campo de carpeta para mostrar la que corresponde al formato
+  updateFolderInputForFormat(fmt);
+  if (persist) saveSetting('default_format', fmt);
+}
+
+function updateFolderInputForFormat(fmt) {
+  const input = document.getElementById('folder-input');
+  const label = document.getElementById('folder-label');
+  if (fmt === 'mp3') {
+    input.value = settings.download_dir_audio || settings.download_dir || '';
+    if (label) label.textContent = 'Carpeta de destino · MP3 (audio)';
+  } else {
+    input.value = settings.download_dir_video || settings.download_dir || '';
+    if (label) label.textContent = 'Carpeta de destino · MP4 (video)';
+  }
+}
+
+async function saveSetting(key, value) {
+  settings[key] = value;
+  try { await pywebview.api.save_settings(settings); } catch (e) { console.error(e); }
+}
+
+async function browseFolder() {
+  // Indicar al backend qué carpeta inicial usar (audio o video)
+  const kind = currentFormat === 'mp3' ? 'audio' : 'video';
+  const folder = await pywebview.api.browse_folder(kind);
+  if (folder) {
+    document.getElementById('folder-input').value = folder;
+    // Guardar SOLO en la carpeta del formato actual
+    const settingKey = currentFormat === 'mp3' ? 'download_dir_audio' : 'download_dir_video';
+    saveSetting(settingKey, folder);
+  }
+}
+
+async function startDownload() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) { showToast('Pega una URL primero', 'warn'); return; }
+  // Persistir cualquier edición manual del campo en la carpeta correspondiente
+  const settingKey = currentFormat === 'mp3' ? 'download_dir_audio' : 'download_dir_video';
+  await saveSetting(settingKey, document.getElementById('folder-input').value);
+  const result = await pywebview.api.start_download(url, currentFormat);
+  if (!result.ok) showToast(result.error, 'error');
+}
+
+async function cancelDownload() {
+  await pywebview.api.cancel_download();
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(updateState, 250);
+  updateState();
+}
+
+async function updateState() {
+  let s;
+  try { s = await pywebview.api.get_state(); }
+  catch { return; }
+
+  // Badge de playlist
+  const plBadge = document.getElementById('dl-playlist-badge');
+  if (s.is_playlist && s.playlist_count > 0) {
+    plBadge.style.display = 'flex';
+    const idx  = s.playlist_index || 0;
+    const tot  = s.playlist_count || 0;
+    const done = s.playlist_completed || 0;
+    const plName = s.playlist_title || 'Playlist';
+    // Texto: muestra video actual o resumen final
+    let plText;
+    if (s.status === 'complete') {
+      plText = `${plName} · ${done}/${tot} listos`;
+    } else if (idx > 0) {
+      plText = `${plName} · video ${idx}/${tot}`;
+    } else {
+      plText = `${plName} · ${tot} videos`;
+    }
+    document.getElementById('dl-playlist-text').textContent = plText;
+    const plPct = tot > 0 ? Math.round((idx / tot) * 100) : 0;
+    document.getElementById('dl-playlist-fill').style.width = `${plPct}%`;
+  } else {
+    plBadge.style.display = 'none';
+  }
+
+  // Title (durante playlist muestra el video actual, no el nombre de la playlist)
+  let titleText = s.title || 'Sin descarga activa';
+  if (s.is_playlist && s.playlist_index > 0 && s.title) {
+    // Si yt-dlp ya nos dio título del video actual, eso ya está en s.title
+    titleText = s.title;
+  } else if (s.is_playlist && s.status === 'starting') {
+    titleText = 'Esperando primer video…';
+  }
+  document.getElementById('dl-title').textContent = titleText;
+
+  // Thumbnail
+  const thumb = document.getElementById('dl-thumb');
+  if (s.thumbnail_url) {
+    thumb.style.backgroundImage = `url('${s.thumbnail_url}')`;
+    thumb.classList.remove('is-default');
+    thumb.innerHTML = '';
+  } else {
+    thumb.style.backgroundImage = '';
+    thumb.classList.add('is-default');
+    const glyph = s.format === 'mp4' ? '▶' : '♪';
+    thumb.innerHTML = `<span class="thumb-glyph">${glyph}</span>`;
+  }
+
+  // Progress
+  const pct = Math.round((s.frac || 0) * 100);
+  document.getElementById('dl-fill').style.width = `${pct}%`;
+  document.getElementById('dl-pct').textContent =
+    (s.is_downloading || s.status === 'complete' || s.status === 'processing') ? `${pct}%` : '';
+
+  // Stats text
+  let statsText = s.status_text || '';
+  let statsClass = '';
+  if (s.status === 'downloading' && s.speed) {
+    const parts = [`⬇ ${fmtBytes(s.speed)}/s`];
+    if (s.total) parts.push(`${fmtBytes(s.downloaded)} / ${fmtBytes(s.total)}`);
+    if (s.eta) parts.push(`${fmtTime(s.eta)} restante`);
+    statsText = parts.join('   ·   ');
+  }
+  if (s.status === 'complete') statsClass = 'ok';
+  else if (s.status === 'error') statsClass = 'err';
+  else if (s.status === 'cancelled') statsClass = 'warn';
+  const statsEl = document.getElementById('dl-stats');
+  statsEl.textContent = statsText || '—';
+  statsEl.className = 'dl-stats ' + statsClass;
+
+  // Botones
+  const btnDl = document.getElementById('btn-download');
+  const btnCa = document.getElementById('btn-cancel');
+  btnDl.disabled = s.is_downloading;
+  btnCa.disabled = !s.is_downloading;
+  btnCa.classList.toggle('cancel-active', s.is_downloading);
+
+  // Toasts de reordenamientos (cuando un video se renombra de "Canción | Artista"
+  // a "Artista - Canción" usando el ID3). Los procesamos uno por uno con delay
+  // para que se puedan leer.
+  if (s.recent_reorders && s.recent_reorders.length > 0) {
+    const reorders = s.recent_reorders.slice();  // copia
+    pywebview.api.clear_recent_reorders();        // limpiar la cola en backend
+    reorders.forEach((r, i) => {
+      setTimeout(() => showReorderToast(r.from, r.to), i * 1500);
+    });
+  }
+
+  // Cuando termina, refrescar historial y avisar
+  if (lastStatus !== s.status && ['complete', 'cancelled', 'error'].includes(s.status)) {
+    refreshHistory();
+    if (s.status === 'complete') {
+      if (s.is_playlist) {
+        const done  = s.playlist_completed || 0;
+        const total = s.playlist_count || 0;
+        showToast(`Playlist completa · ${done} de ${total} videos`, 'ok');
+      } else {
+        showToast('Descarga completada', 'ok');
+      }
+      hideErrorBanner();
+    }
+    else if (s.status === 'cancelled') {
+      showToast('Cancelado · archivos parciales eliminados', 'warn');
+      hideErrorBanner();
+    }
+    else if (s.status === 'error') {
+      showToast(s.status_text || 'Error en la descarga', 'error');
+      showErrorBanner(s);
+    }
+  }
+  // Al iniciar una nueva descarga, ocultar banner viejo
+  if (lastStatus === 'error' && s.status === 'starting') {
+    hideErrorBanner();
+  }
+  lastStatus = s.status;
+}
+
+async function refreshHistory() {
+  let items;
+  try { items = await pywebview.api.get_history(); } catch { return; }
+  Object.keys(historyById).forEach(k => delete historyById[k]);
+  items.forEach(it => historyById[it.id] = it);
+
+  const recentEl = document.getElementById('recent-list');
+  const fullEl = document.getElementById('history-list');
+  recentEl.innerHTML = '';
+  fullEl.innerHTML = '';
+
+  if (items.length === 0) {
+    recentEl.innerHTML = '<div class="empty-state">Aún no hay descargas. Pega una URL arriba para empezar.</div>';
+    fullEl.innerHTML = '<div class="empty-state">No hay descargas aún.</div>';
+    return;
+  }
+  items.slice(0, 5).forEach(it => recentEl.appendChild(makeHistoryRow(it)));
+  items.forEach(it => fullEl.appendChild(makeHistoryRow(it)));
+}
+
+function makeHistoryRow(it) {
+  const row = document.createElement('div');
+  row.className = 'history-item';
+  const isVideo = it.format === 'mp4';
+  const statusMap = {
+    complete:  ['ok',   'Completo'],
+    error:     ['err',  'Error'],
+    cancelled: ['warn', 'Cancelado']
+  };
+  const [stCls, stTxt] = statusMap[it.status] || ['', it.status];
+  const sizeTxt = it.size_bytes ? fmtBytes(it.size_bytes) : '—';
+  const fmtLbl = (it.format || '').toUpperCase() || '—';
+
+  row.innerHTML = `
+    <div class="hist-icon">${isVideo ? '▶' : '♪'}</div>
+    <div class="hist-text">
+      <div class="hist-title" title="${escapeHtml(it.filename || '')}">${escapeHtml(it.filename || it.title || '—')}</div>
+      <div class="hist-meta">
+        <span class="badge">${fmtLbl}</span> &nbsp;·&nbsp; ${sizeTxt} &nbsp;·&nbsp;
+        <span class="${stCls}">${stTxt}</span>
+      </div>
+    </div>
+    <div class="hist-side">
+      <div>${fmtRelTime(it.timestamp)}</div>
+      <div class="actions">
+        ${it.exists ? '<button class="icon-btn play" data-act="play" title="Reproducir">▶</button>' : ''}
+        <button class="icon-btn" data-act="open" title="Abrir en explorador">📂</button>
+        <button class="icon-btn danger" data-act="del" title="Eliminar del historial">✕</button>
+      </div>
+    </div>
+  `;
+
+  row.querySelectorAll('[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const act = btn.dataset.act;
+      if (act === 'play')  playFromHistory(it);
+      if (act === 'open')  pywebview.api.open_in_explorer(it.filepath || it.dir || '');
+      if (act === 'del')   deleteHistoryItem(it.id);
+    });
+  });
+  return row;
+}
+
+async function deleteHistoryItem(id) {
+  await pywebview.api.delete_history_item(id);
+  refreshHistory();
+}
+
+async function clearHistory() {
+  if (!confirm('¿Borrar todo el historial? Los archivos descargados NO se eliminan.')) return;
+  await pywebview.api.clear_history();
+  refreshHistory();
+}
+
+async function playFromHistory(item) {
+  if (!item.exists) { showToast('El archivo ya no existe en disco', 'warn'); return; }
+  playerFolder = item.dir;
+  // Detectar si es audio o video por la extensión y poner el toggle correcto
+  const isVideo = /\.(mp4|webm|mkv|mov|avi)$/i.test(item.filepath);
+  playerSource = isVideo ? 'video' : 'audio';
+  navTo('player');
+  await openPlayerPage();
+  setTimeout(() => playFile(item.filepath), 80);
+}
+
+// Cache de thumbnails ya cargados (path → dataURL/url) para no re-pedirlos
+const thumbCache = new Map();
+
+async function openPlayerPage() {
+  // Si no hay carpeta explícita seteada, usar la del source actual
+  if (!playerFolder) {
+    playerFolder = (playerSource === 'audio')
+      ? (settings.download_dir_audio || settings.download_dir)
+      : (settings.download_dir_video || settings.download_dir);
+  }
+  // Sincronizar el toggle visualmente
+  document.querySelectorAll('.player-toggle-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === playerSource);
+  });
+  document.getElementById('player-folder').textContent = playerFolder || '—';
+
+  let files;
+  try { files = await pywebview.api.list_media_files(playerFolder); }
+  catch { files = []; }
+
+  // Filtrar por tipo según source
+  if (playerSource === 'audio') {
+    files = files.filter(f => f.kind === 'audio');
+  } else {
+    files = files.filter(f => f.kind === 'video');
+  }
+
+  const listEl = document.getElementById('player-file-list');
+  listEl.innerHTML = '';
+  if (!files.length) {
+    const tipo = playerSource === 'audio' ? 'audios' : 'videos';
+    listEl.innerHTML = `<div class="empty-state" style="padding:24px">No hay ${tipo} en esta carpeta.</div>`;
+    return;
+  }
+  files.forEach(f => {
+    const row = buildFileRow(f);
+    listEl.appendChild(row);
+    loadRowThumbnail(row, f);
+  });
+}
+
+function switchPlayerSource(source) {
+  if (source === playerSource) return;
+  playerSource = source;
+  // Resetear la carpeta para que tome la nueva del source
+  playerFolder = (source === 'audio')
+    ? (settings.download_dir_audio || settings.download_dir)
+    : (settings.download_dir_video || settings.download_dir);
+  openPlayerPage();
+}
+
+function buildFileRow(f) {
+  const row = document.createElement('div');
+  row.className = 'file-row';
+  row.dataset.path = f.path;
+  if (currentlyPlaying === f.path) row.classList.add('playing');
+  const glyph = f.kind === 'video' ? '▶' : '♪';
+  row.innerHTML = `
+    <div class="thumb-mini"><div class="glyph">${glyph}</div></div>
+    <div class="name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+    <div class="actions">
+      <button class="row-btn rename" title="Renombrar">✎</button>
+      <button class="row-btn delete" title="Borrar">🗑</button>
+    </div>
+  `;
+  // Click en el row reproduce (excepto si vino de un botón o input)
+  row.addEventListener('click', (e) => {
+    if (e.target.closest('.actions') || e.target.closest('.rename-input')) return;
+    playFile(f.path);
+  });
+  row.querySelector('.row-btn.rename').addEventListener('click', (e) => {
+    e.stopPropagation();
+    startRename(row, f);
+  });
+  row.querySelector('.row-btn.delete').addEventListener('click', (e) => {
+    e.stopPropagation();
+    deleteFileAction(f);
+  });
+  return row;
+}
+
+async function loadRowThumbnail(row, f) {
+  const thumbEl = row.querySelector('.thumb-mini');
+  if (!thumbEl) return;
+  // Solo intentamos para audio (los videos quedan con el glyph ▶ rojo)
+  if (f.kind !== 'audio') return;
+  if (thumbCache.has(f.path)) {
+    const cached = thumbCache.get(f.path);
+    if (cached) {
+      thumbEl.style.backgroundImage = `url('${cached}')`;
+      thumbEl.classList.add('has-image');
+    }
+    return;
+  }
+  try {
+    const url = await pywebview.api.get_embedded_thumbnail(f.path);
+    thumbCache.set(f.path, url || null);
+    if (url) {
+      thumbEl.style.backgroundImage = `url('${url}')`;
+      thumbEl.classList.add('has-image');
+    }
+  } catch (e) {
+    thumbCache.set(f.path, null);
+  }
+}
+
+function startRename(row, f) {
+  row.classList.add('editing');
+  const nameEl = row.querySelector('.name');
+  const oldName = f.name;
+  // Quitar extensión para edición (el backend la conserva si no se incluye)
+  const dotIdx = oldName.lastIndexOf('.');
+  const stem = dotIdx > 0 ? oldName.slice(0, dotIdx) : oldName;
+  const ext  = dotIdx > 0 ? oldName.slice(dotIdx) : '';
+
+  const input = document.createElement('input');
+  input.className = 'rename-input';
+  input.value = stem;
+  input.spellcheck = false;
+  nameEl.replaceWith(input);
+  input.focus();
+  input.select();
+
+  const finish = async (commit) => {
+    if (!commit) {
+      row.classList.remove('editing');
+      // Restaurar el name original
+      const newNameEl = document.createElement('div');
+      newNameEl.className = 'name';
+      newNameEl.title = oldName;
+      newNameEl.textContent = oldName;
+      input.replaceWith(newNameEl);
+      return;
+    }
+    const newStem = input.value.trim();
+    if (!newStem || (newStem + ext) === oldName) {
+      finish(false);
+      return;
+    }
+    try {
+      const result = await pywebview.api.rename_media_file(f.path, newStem + ext);
+      if (result.ok) {
+        if (currentlyPlaying === f.path) currentlyPlaying = result.path;
+        showToast('Renombrado', 'ok');
+        // Recargar lista (el path cambió)
+        openPlayerPage();
+      } else {
+        showToast(result.error || 'No se pudo renombrar', 'error');
+        finish(false);
+      }
+    } catch (e) {
+      showToast('Error: ' + e, 'error');
+      finish(false);
+    }
+  };
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  input.addEventListener('blur', () => {
+    // Si todavía está en edición, confirmar
+    if (row.classList.contains('editing')) finish(true);
+  });
+}
+
+async function deleteFileAction(f) {
+  if (!confirm(`¿Borrar "${f.name}" del disco?\n\nSi el sistema lo permite se enviará a la papelera; si no, se eliminará definitivamente.`)) return;
+  try {
+    const result = await pywebview.api.delete_media_file(f.path);
+    if (result.ok) {
+      // Si era el que se estaba reproduciendo, limpiar player
+      if (currentlyPlaying === f.path) {
+        currentlyPlaying = null;
+        const main = document.getElementById('player-main');
+        main.innerHTML = `
+          <div class="player-empty">
+            <div class="icon">▶</div>
+            <div>Selecciona un archivo para reproducir</div>
+          </div>`;
+      }
+      thumbCache.delete(f.path);
+      showToast(result.trashed ? 'Enviado a la papelera' : 'Archivo eliminado', 'ok');
+      openPlayerPage();
+      refreshHistory();
+    } else {
+      showToast(result.error || 'No se pudo borrar', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+async function changePlayerFolder() {
+  const folder = await pywebview.api.browse_folder(playerSource);
+  if (folder) {
+    playerFolder = folder;
+    openPlayerPage();
+  }
+}
+
+async function playFile(path) {
+  const url = await pywebview.api.get_playback_url(path);
+  if (!url) { showToast('No se puede reproducir el archivo', 'error'); return; }
+  currentlyPlaying = path;
+  // Actualizar marca "playing" en la lista
+  document.querySelectorAll('.file-row').forEach(r => {
+    r.classList.toggle('playing', r.dataset.path === path);
+  });
+  const fname = path.split(/[\\/]/).pop();
+
+  const isVideo = /\.(mp4|webm|mkv|mov|avi)$/i.test(path);
+  const main = document.getElementById('player-main');
+  main.innerHTML = '';
+
+  if (isVideo) {
+    const vc = document.createElement('div');
+    vc.className = 'video-container';
+    vc.innerHTML = `<video src="${url}" controls autoplay></video>`;
+    main.appendChild(vc);
+    const t = document.createElement('div');
+    t.className = 'now-playing';
+    t.textContent = fname;
+    main.appendChild(t);
+  } else {
+    const ac = document.createElement('div');
+    ac.className = 'audio-container';
+    // Buscar la portada del archivo
+    let coverHtml = '<div class="audio-art">♪</div>';
+    try {
+      const cover = thumbCache.has(path)
+        ? thumbCache.get(path)
+        : await pywebview.api.get_embedded_thumbnail(path);
+      if (cover) {
+        thumbCache.set(path, cover);
+        coverHtml = `<div class="audio-art has-cover"><img src="${cover}" alt=""></div>`;
+      }
+    } catch (e) {
+      // Fallback al glyph
+    }
+    ac.innerHTML = coverHtml;
+    main.appendChild(ac);
+
+    const t = document.createElement('div');
+    t.className = 'now-playing';
+    t.textContent = fname;
+    main.appendChild(t);
+    const ctrls = document.createElement('div');
+    ctrls.className = 'player-controls';
+    ctrls.innerHTML = `<audio src="${url}" controls autoplay></audio>`;
+    main.appendChild(ctrls);
+  }
+}
+
+async function cleanFolder() {
+  const folder = await pywebview.api.browse_folder();
+  if (!folder) return;
+  showToast('Limpiando carpeta…', '');
+  const result = await pywebview.api.clean_folder(folder);
+  if (result.ok) {
+    const renamed  = result.count || 0;
+    const tagged   = result.tags_fixed || 0;
+    const errors   = result.errors || 0;
+    const reorders = result.reorders || [];
+
+    if (renamed === 0 && tagged === 0 && errors === 0) {
+      showToast('Todo estaba ya limpio ✓', 'ok');
+    } else {
+      const parts = [];
+      if (renamed > 0) parts.push(`Renombrados: ${renamed}`);
+      if (reorders.length > 0) parts.push(`Reordenados por ID3: ${reorders.length}`);
+      if (tagged > 0)  parts.push(`Tags ID3 limpiados: ${tagged}`);
+      if (errors > 0)  parts.push(`Errores: ${errors}`);
+      showToast(parts.join(' · '), errors ? 'warn' : 'ok');
+
+      // Después del toast resumen, mostrar los reorders uno por uno
+      // (con delay para que se puedan leer)
+      reorders.forEach((r, i) => {
+        setTimeout(() => showReorderToast(r.from, r.to), 4000 + i * 1500);
+      });
+    }
+  } else {
+    showToast(result.error || 'Error', 'error');
+  }
+}
+
+// ----- Helpers -----
+function fmtBytes(n) {
+  if (!n && n !== 0) return '—';
+  let v = n; const u = ['B','KB','MB','GB','TB'];
+  let i = 0;
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return `${v.toFixed(1)} ${u[i]}`;
+}
+function fmtTime(s) {
+  if (!s) return '—';
+  s = Math.round(s);
+  const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), ss = s%60;
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+function fmtRelTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  const now = new Date();
+  const hm = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  if (now.toDateString() === d.toDateString()) return `Hoy, ${hm}`;
+  const yest = new Date(now); yest.setDate(yest.getDate()-1);
+  if (yest.toDateString() === d.toDateString()) return `Ayer, ${hm}`;
+  const days = Math.floor((now - d) / 86400000);
+  if (days < 7) return `${days}d, ${hm}`;
+  const months = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  return `${d.getDate()} ${months[d.getMonth()]}, ${hm}`;
+}
+function escapeHtml(s) {
+  if (s == null) return '';
+  return String(s).replace(/[&<>"']/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ===== Cookies desde navegador (nuevo, multiplataforma) =====
+async function loadBrowserCookies() {
+  try {
+    const res = await pywebview.api.get_cookies_browser();
+    const sel = document.getElementById('browser-cookies-select');
+    if (sel && res && typeof res.current === 'string') {
+      sel.value = res.current;
+      updateBrowserCookiesFeedback(res.current);
+    }
+  } catch (e) { /* ignore */ }
+}
+
+async function saveBrowserCookies() {
+  const sel = document.getElementById('browser-cookies-select');
+  const fb  = document.getElementById('browser-cookies-feedback');
+  const btn = document.getElementById('btn-save-browser-cookies');
+  const value = sel ? sel.value : '';
+  if (btn) btn.disabled = true;
+  try {
+    const res = await pywebview.api.set_cookies_browser(value);
+    if (res && res.ok) {
+      if (fb) {
+        fb.className = 'cookies-feedback ok';
+        fb.textContent = value
+          ? `✓ Guardado. yt-dlp usará las cookies de ${prettyBrowser(value)}.`
+          : '✓ Guardado. No se usará ningún navegador (fallback a cookies.txt manual).';
+      }
+      showToast(value ? `Cookies desde ${prettyBrowser(value)}` : 'Cookies desde navegador desactivadas', 'ok');
+    } else {
+      if (fb) {
+        fb.className = 'cookies-feedback err';
+        fb.textContent = '✗ ' + (res && res.error ? res.error : 'No se pudo guardar');
+      }
+    }
+  } catch (e) {
+    if (fb) { fb.className = 'cookies-feedback err'; fb.textContent = 'Error: ' + e; }
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function updateBrowserCookiesFeedback(current) {
+  const fb = document.getElementById('browser-cookies-feedback');
+  if (!fb) return;
+  if (current) {
+    fb.className = 'cookies-feedback ok';
+    fb.textContent = `Actualmente activo: ${prettyBrowser(current)}`;
+  } else {
+    fb.className = 'cookies-feedback';
+    fb.textContent = '';
+  }
+}
+
+function prettyBrowser(b) {
+  const map = {
+    chrome: 'Google Chrome', firefox: 'Firefox', edge: 'Microsoft Edge',
+    brave: 'Brave', opera: 'Opera', safari: 'Safari',
+    chromium: 'Chromium', vivaldi: 'Vivaldi'
+  };
+  return map[b] || b;
+}
+
+// ===== Telegram (Telethon / MTProto) =====
+async function refreshTelegramStatus() {
+  let st;
+  try { st = await pywebview.api.telegram_get_status(); }
+  catch (e) { return; }
+
+  const noinstall  = document.getElementById('tg-noinstall');
+  const stepCreds  = document.getElementById('tg-step-creds');
+  const stepPhone  = document.getElementById('tg-step-phone');
+  const stepCode   = document.getElementById('tg-step-code');
+  const stepConn   = document.getElementById('tg-step-connected');
+  const userInfo   = document.getElementById('tg-user-info');
+  const feedback   = document.getElementById('tg-feedback');
+
+  // Ocultar todo por default
+  [noinstall, stepCreds, stepPhone, stepCode, stepConn].forEach(el => {
+    if (el) el.style.display = 'none';
+  });
+  if (feedback) { feedback.textContent = ''; feedback.className = 'cookies-feedback'; }
+
+  if (!st.telethon_available) {
+    noinstall.style.display = 'block';
+    return;
+  }
+  if (!st.has_credentials) {
+    stepCreds.style.display = 'block';
+    return;
+  }
+  if (!st.authorized) {
+    stepPhone.style.display = 'block';
+    return;
+  }
+  // Conectado
+  stepConn.style.display = 'block';
+  if (st.user) {
+    const name = ((st.user.first_name || '') + ' ' + (st.user.last_name || '')).trim();
+    const parts = [];
+    if (name) parts.push(name);
+    if (st.user.phone) parts.push('+' + st.user.phone);
+    if (st.user.username) parts.push('@' + st.user.username);
+    userInfo.textContent = parts.join(' · ');
+  }
+}
+
+async function tgSaveCreds() {
+  const apiId   = document.getElementById('tg-api-id').value.trim();
+  const apiHash = document.getElementById('tg-api-hash').value.trim();
+  const fb      = document.getElementById('tg-feedback');
+  const btn     = document.getElementById('btn-tg-save-creds');
+  btn.disabled = true;
+  try {
+    const res = await pywebview.api.telegram_save_credentials(apiId, apiHash);
+    if (res && res.ok) {
+      showToast('✓ Credenciales guardadas', 'ok');
+      await refreshTelegramStatus();
+    } else {
+      fb.className = 'cookies-feedback err';
+      fb.textContent = '✗ ' + (res && res.error ? res.error : 'Sin respuesta del backend');
+    }
+  } catch (e) {
+    fb.className = 'cookies-feedback err';
+    fb.textContent = 'Error JS: ' + e;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function tgSendCode() {
+  const phone = document.getElementById('tg-phone').value.trim();
+  const fb    = document.getElementById('tg-feedback');
+  const btn   = document.getElementById('btn-tg-send-code');
+  if (!phone) {
+    fb.className = 'cookies-feedback err';
+    fb.textContent = 'Ingresa tu número con código de país (ej: +549...).';
+    return;
+  }
+  btn.disabled = true;
+  fb.className = 'cookies-feedback';
+  fb.textContent = 'Enviando código…';
+  try {
+    const res = await pywebview.api.telegram_send_code(phone);
+    if (res.ok) {
+      showToast('📩 Código enviado a Telegram', 'ok');
+      document.getElementById('tg-step-phone').style.display = 'none';
+      document.getElementById('tg-step-code').style.display = 'block';
+      fb.className = 'cookies-feedback ok';
+      fb.textContent = 'Revisa el chat "Telegram" en la app oficial.';
+      document.getElementById('tg-code').focus();
+    } else {
+      fb.className = 'cookies-feedback err';
+      fb.textContent = '✗ ' + (res.error || 'No se pudo enviar el código');
+    }
+  } catch (e) {
+    fb.className = 'cookies-feedback err';
+    fb.textContent = 'Error: ' + e;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function tgSignIn() {
+  const code = document.getElementById('tg-code').value.trim();
+  const pwd  = document.getElementById('tg-password').value;
+  const fb   = document.getElementById('tg-feedback');
+  const btn  = document.getElementById('btn-tg-signin');
+  if (!code) {
+    fb.className = 'cookies-feedback err';
+    fb.textContent = 'Ingresa el código que recibiste.';
+    return;
+  }
+  btn.disabled = true;
+  fb.className = 'cookies-feedback';
+  fb.textContent = 'Verificando…';
+  try {
+    const res = await pywebview.api.telegram_sign_in(code, pwd);
+    if (res.ok) {
+      showToast('✓ Conectado a Telegram', 'ok');
+      document.getElementById('tg-code').value = '';
+      document.getElementById('tg-password').value = '';
+      await refreshTelegramStatus();
+    } else if (res.needs_password) {
+      fb.className = 'cookies-feedback warn';
+      fb.textContent = 'Tenés 2FA activado. Ingresa tu contraseña de Telegram también.';
+      document.getElementById('tg-password').focus();
+    } else {
+      fb.className = 'cookies-feedback err';
+      fb.textContent = '✗ ' + (res.error || 'Login falló');
+    }
+  } catch (e) {
+    fb.className = 'cookies-feedback err';
+    fb.textContent = 'Error: ' + e;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function tgLogout() {
+  if (!confirm('¿Cerrar sesión de Telegram? Vas a tener que loguearte de nuevo para descargar de grupos privados.')) return;
+  try {
+    await pywebview.api.telegram_logout();
+    showToast('Sesión cerrada', 'ok');
+    await refreshTelegramStatus();
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+function tgBackToCreds() {
+  document.getElementById('tg-step-phone').style.display = 'none';
+  document.getElementById('tg-step-creds').style.display = 'block';
+}
+
+// ===== Cookies / Sesión =====
+async function refreshCookiesStatus() {
+  let st;
+  try { st = await pywebview.api.get_cookies_status(); }
+  catch (e) { return; }
+
+  const card    = document.getElementById('account-status');
+  const icon    = document.getElementById('account-status-icon');
+  const title   = document.getElementById('account-status-title');
+  const sub     = document.getElementById('account-status-sub');
+  const btnClr  = document.getElementById('btn-clear-cookies');
+  const badge   = document.getElementById('nav-account-badge');
+
+  card.classList.remove('active', 'expired');
+
+  if (!st.present) {
+    icon.textContent = '○';
+    title.textContent = 'Sin sesión';
+    sub.textContent = 'No hay cookies guardadas. Algunos videos pueden requerir iniciar sesión.';
+    btnClr.style.display = 'none';
+    badge.classList.remove('active', 'warn');
+    return;
+  }
+
+  if (!st.valid) {
+    card.classList.add('expired');
+    icon.textContent = '!';
+    title.textContent = 'Cookies inválidas';
+    sub.textContent = 'El archivo guardado no tiene formato Netscape. Pegá las cookies de nuevo.';
+    btnClr.style.display = 'inline-flex';
+    badge.classList.remove('active');
+    badge.classList.add('warn', 'active');
+    return;
+  }
+
+  // Cookies válidas — calcular si están por expirar
+  const now = Date.now() / 1000;
+  const soonest = st.expires_soonest || 0;
+  // Cantidad de horas hasta que expire la cookie más próxima
+  const hoursLeft = soonest > 0 ? (soonest - now) / 3600 : -1;
+  const daysLeft  = soonest > 0 ? Math.floor(hoursLeft / 24) : -1;
+
+  if (st.youtube_count === 0) {
+    card.classList.add('expired');
+    icon.textContent = '?';
+    title.textContent = 'Sin cookies de YouTube';
+    sub.textContent = `Hay ${st.count} cookie(s) guardadas pero ninguna es de YouTube/Google. ¿Exportaste desde el dominio correcto?`;
+    badge.classList.add('warn', 'active');
+  } else if (hoursLeft >= 0 && hoursLeft < 6) {
+    // Vencen en menos de 6 horas: alertar
+    card.classList.add('expired');
+    icon.textContent = '⏳';
+    title.textContent = 'Sesión a punto de expirar';
+    sub.textContent = `${st.youtube_count} cookie(s) de YouTube · vencen en menos de ${Math.max(1, Math.ceil(hoursLeft))} hora(s). Conviene refrescarlas ya.`;
+    badge.classList.add('warn', 'active');
+  } else if (daysLeft === 0) {
+    // Vencen hoy pero no inminente: warning suave
+    card.classList.add('active');
+    icon.textContent = '✓';
+    title.textContent = 'Sesión activa · vence hoy';
+    sub.textContent = `${st.youtube_count} cookie(s) de YouTube. Funcionan, pero conviene refrescarlas pronto.`;
+    badge.classList.remove('warn');
+    badge.classList.add('active');
+  } else if (daysLeft > 0 && daysLeft < 3) {
+    card.classList.add('active');
+    icon.textContent = '✓';
+    title.textContent = `Sesión activa · vence en ${daysLeft} día${daysLeft === 1 ? '' : 's'}`;
+    sub.textContent = `${st.youtube_count} cookie(s) de YouTube guardadas.`;
+    badge.classList.remove('warn');
+    badge.classList.add('active');
+  } else {
+    card.classList.add('active');
+    icon.textContent = '✓';
+    title.textContent = 'Sesión activa';
+    const expTxt = daysLeft >= 3
+      ? ` · vencen en ~${daysLeft} días`
+      : '';
+    sub.textContent = `${st.youtube_count} cookie(s) de YouTube guardadas${expTxt}.`;
+    badge.classList.remove('warn');
+    badge.classList.add('active');
+  }
+  btnClr.style.display = 'inline-flex';
+}
+
+async function saveCookies() {
+  const ta = document.getElementById('cookies-textarea');
+  const fb = document.getElementById('cookies-feedback');
+  const text = ta.value.trim();
+  if (!text) {
+    fb.textContent = 'Pegá el contenido del archivo de cookies primero.';
+    fb.className = 'cookies-feedback warn';
+    return;
+  }
+  fb.textContent = 'Guardando…';
+  fb.className = 'cookies-feedback';
+  try {
+    const result = await pywebview.api.save_cookies_text(text);
+    if (result.ok) {
+      fb.textContent = '✓ ' + result.message;
+      fb.className = 'cookies-feedback ok';
+      ta.value = '';
+      refreshCookiesStatus();
+      showToast('Sesión guardada correctamente', 'ok');
+      // Si el banner de error estaba mostrado por needs_auth, ocultarlo
+      hideErrorBanner();
+    } else {
+      fb.textContent = '✗ ' + result.message;
+      fb.className = 'cookies-feedback err';
+    }
+  } catch (e) {
+    fb.textContent = '✗ Error: ' + e;
+    fb.className = 'cookies-feedback err';
+  }
+}
+
+async function clearCookiesAction() {
+  if (!confirm('¿Cerrar sesión y borrar las cookies guardadas?')) return;
+  try {
+    await pywebview.api.clear_cookies();
+    refreshCookiesStatus();
+    showToast('Sesión cerrada', 'ok');
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+async function pasteFromClipboard() {
+  try {
+    const text = await navigator.clipboard.readText();
+    if (!text) {
+      showToast('El portapapeles está vacío', 'warn');
+      return;
+    }
+    document.getElementById('cookies-textarea').value = text;
+  } catch (e) {
+    showToast('No se pudo leer el portapapeles. Pegá manualmente con Ctrl+V.', 'warn');
+  }
+}
+
+// ===== Banner de error =====
+function showErrorBanner(state) {
+  const banner = document.getElementById('error-banner');
+  const title  = document.getElementById('error-banner-title');
+  const hint   = document.getElementById('error-banner-hint');
+  const action = document.getElementById('error-banner-action');
+
+  title.textContent = state.status_text || 'Error';
+  hint.textContent  = state.error_hint || '';
+  action.innerHTML  = '';
+
+  // Acción según el código de error
+  if (state.error_code === 'needs_auth' || state.error_code === 'auth_failed') {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = state.error_code === 'auth_failed'
+      ? '🔄 Renovar sesión'
+      : '👤 Ir a Cuenta';
+    btn.addEventListener('click', () => {
+      navTo('account');
+      hideErrorBanner();
+    });
+    action.appendChild(btn);
+  } else if (state.error_code === 'no_format') {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.textContent = '⚙ Cambiar calidad';
+    btn.addEventListener('click', () => {
+      navTo('settings');
+      hideErrorBanner();
+    });
+    action.appendChild(btn);
+  }
+
+  // 403 y "no hay formato" casi siempre son yt-dlp desactualizado: ofrecer
+  // el atajo directo a la card del actualizador.
+  if (state.error_code === 'forbidden' || state.error_code === 'no_format') {
+    const btn = document.createElement('button');
+    btn.className = 'btn';
+    btn.style.marginLeft = action.children.length ? '8px' : '0';
+    btn.textContent = '⬆ Actualizar yt-dlp';
+    btn.addEventListener('click', () => {
+      goToYtdlpCard();
+      hideErrorBanner();
+      checkYtdlpUpdate(false);
+    });
+    action.appendChild(btn);
+  }
+
+  banner.classList.add('show');
+}
+
+function hideErrorBanner() {
+  document.getElementById('error-banner').classList.remove('show');
+}
+
+// ===== FFmpeg =====
+function renderFfmpegStatus(envInfo) {
+  // envInfo: objeto con ffmpeg_present, ffmpeg_path, ffmpeg_is_manual, ffmpeg_version
+  const led        = document.getElementById('ffmpeg-led');
+  const title      = document.getElementById('ffmpeg-status-title');
+  const versionEl  = document.getElementById('ffmpeg-status-version');
+  const pathEl     = document.getElementById('ffmpeg-status-path');
+  const btnReset   = document.getElementById('btn-ffmpeg-reset');
+  const btnBrowse  = document.getElementById('btn-ffmpeg-browse');
+
+  // Actualizar también el indicador en Acerca de
+  const reqFfmpeg = document.getElementById('req-ffmpeg');
+
+  if (envInfo.ffmpeg_present) {
+    led.className = 'env-led on';
+    if (envInfo.ffmpeg_is_manual) {
+      title.textContent = '✓ Configurado manualmente';
+    } else {
+      title.textContent = '✓ Detectado en el PATH del sistema';
+    }
+    versionEl.textContent = envInfo.ffmpeg_version || '';
+    pathEl.textContent = envInfo.ffmpeg_path || '';
+    btnReset.style.display = envInfo.ffmpeg_is_manual ? 'inline-flex' : 'none';
+    btnBrowse.textContent = '📂 Cambiar ruta…';
+    if (reqFfmpeg) {
+      reqFfmpeg.textContent = '✓ detectado';
+      reqFfmpeg.className = 'req-status ok';
+    }
+  } else {
+    led.className = 'env-led err';
+    title.textContent = '✗ No encontrado';
+    versionEl.textContent = '';
+    pathEl.textContent = 'Necesario para convertir a MP3 y para fusionar video+audio MP4.';
+    btnReset.style.display = 'none';
+    btnBrowse.textContent = '📂 Seleccionar ffmpeg.exe…';
+    if (reqFfmpeg) {
+      reqFfmpeg.textContent = '✗ falta';
+      reqFfmpeg.className = 'req-status missing';
+    }
+  }
+}
+
+async function autodetectFfmpeg() {
+  const btn = document.getElementById('btn-ffmpeg-autodetect');
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '🔍 Buscando…';
+  try {
+    const result = await pywebview.api.autodetect_ffmpeg();
+    if (!result.found) {
+      showToast('No se encontró FFmpeg automáticamente. Probá la opción manual.', 'warn');
+      return;
+    }
+    if (result.already_configured) {
+      showToast('FFmpeg ya está configurado y funcionando', 'ok');
+      return;
+    }
+    // Encontramos uno — confirmar con el usuario antes de aplicarlo
+    if (confirm(`¿Usar este FFmpeg encontrado?\n\n${result.path}\n\n${result.version || ''}`)) {
+      const setResult = await pywebview.api.set_ffmpeg_path(result.path);
+      if (setResult.ok) {
+        showToast('✓ FFmpeg configurado correctamente', 'ok');
+        env = await pywebview.api.get_env();
+        renderFfmpegStatus(env);
+      } else {
+        showToast('✗ ' + (setResult.error || 'No se pudo configurar'), 'error');
+      }
+    }
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function browseFfmpegPath() {
+  try {
+    const result = await pywebview.api.browse_ffmpeg_file();
+    if (result.ok) {
+      showToast('✓ FFmpeg configurado correctamente', 'ok');
+      // Refrescar entorno para reflejar el cambio
+      env = await pywebview.api.get_env();
+      renderFfmpegStatus(env);
+    } else if (result.error === 'Cancelado') {
+      // Usuario canceló, no mostrar nada
+    } else {
+      showToast('✗ ' + (result.error || 'No se pudo configurar'), 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+async function resetFfmpegPath() {
+  if (!confirm('¿Volver a usar el FFmpeg del PATH del sistema?\n\nSi no hay FFmpeg en el PATH, va a quedar sin configurar.')) return;
+  try {
+    const result = await pywebview.api.clear_ffmpeg_path();
+    env = await pywebview.api.get_env();
+    renderFfmpegStatus(env);
+    if (result.found_in_path) {
+      showToast('✓ Usando FFmpeg del PATH del sistema', 'ok');
+    } else {
+      showToast('FFmpeg no se encuentra en el PATH', 'warn');
+    }
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+// ===== yt-dlp (actualizador) =====
+async function refreshYtdlpCard() {
+  try {
+    ytdlpInfo = await pywebview.api.ytdlp_get_info();
+  } catch (e) {
+    return;
+  }
+  renderYtdlpCard();
+  if (ytdlpInfo.state) renderYtdlpState(ytdlpInfo.state);
+}
+
+function renderYtdlpCard() {
+  const led      = document.getElementById('ytdlp-led');
+  const title    = document.getElementById('ytdlp-version-title');
+  const origin   = document.getElementById('ytdlp-origin');
+  const pathEl   = document.getElementById('ytdlp-path');
+  const btnRest  = document.getElementById('btn-ytdlp-restore');
+  const hint     = document.getElementById('ytdlp-hint');
+  const st       = ytdlpInfo.state || {};
+
+  const version = ytdlpInfo.version || '?';
+  title.textContent = version === '?' ? 'Versión desconocida' : `yt-dlp ${version}`;
+  if (ytdlpInfo.pending) {
+    title.textContent += `  →  ${ytdlpInfo.pending} (al reiniciar)`;
+  }
+  led.className = 'env-led ' + (st.update_available ? 'warn' : (version === '?' ? 'err' : 'on'));
+
+  if (ytdlpInfo.pending) {
+    origin.textContent = `Ya está instalada la ${ytdlpInfo.pending}; se va a usar cuando reinicies la app.`;
+  } else if (ytdlpInfo.override) {
+    origin.textContent = 'Copia actualizada desde la app (tiene prioridad sobre la que vino empaquetada).';
+  } else if (ytdlpInfo.method === 'wheel') {
+    origin.textContent = 'Versión empaquetada dentro del ejecutable.';
+  } else {
+    origin.textContent = 'Instalada en el entorno de Python (site-packages).';
+  }
+
+  // La ruta y el botón de restaurar solo tienen sentido si hay copia local
+  const hasLocal = !!(ytdlpInfo.override || ytdlpInfo.local_version);
+  pathEl.textContent = hasLocal ? (ytdlpInfo.override_dir || '') : '';
+  btnRest.style.display = hasLocal ? 'inline-flex' : 'none';
+
+  hint.textContent = ytdlpInfo.method === 'pip'
+    ? 'Se actualiza con pip sobre tu instalación de Python.'
+    : 'La actualización se descarga de PyPI y se guarda en tu carpeta de datos; '
+      + 'el ejecutable no se modifica.';
+
+  // El botón de actualizar solo aparece cuando ya sabemos que hay algo nuevo
+  document.getElementById('btn-ytdlp-update').style.display =
+    st.update_available ? 'inline-flex' : 'none';
+  document.getElementById('btn-ytdlp-restart').style.display =
+    st.restart_needed ? 'inline-flex' : 'none';
+}
+
+function setYtdlpFeedback(msg, cls='') {
+  const fb = document.getElementById('ytdlp-feedback');
+  fb.textContent = msg || '';
+  fb.className = 'updater-feedback ' + cls;
+}
+
+async function checkYtdlpUpdate(silent) {
+  const btn = document.getElementById('btn-ytdlp-check');
+  const original = btn.textContent;
+  if (!silent) {
+    btn.disabled = true;
+    btn.textContent = '🔄 Buscando…';
+    setYtdlpFeedback('Consultando PyPI…');
+  }
+  let res;
+  try {
+    res = await pywebview.api.ytdlp_check_update();
+  } catch (e) {
+    if (!silent) setYtdlpFeedback('Error: ' + e, 'err');
+    return null;
+  } finally {
+    if (!silent) { btn.disabled = false; btn.textContent = original; }
+  }
+
+  if (!res.ok) {
+    if (!silent) setYtdlpFeedback('✗ ' + (res.error || 'No se pudo comprobar'), 'err');
+    return res;
+  }
+
+  await refreshYtdlpCard();
+  if (res.update_available) {
+    setYtdlpFeedback(`Hay una versión nueva: ${res.latest} (tenés ${res.current}).`, 'warn');
+  } else if (!silent) {
+    setYtdlpFeedback(`✓ Ya tenés la última versión (${res.current}).`, 'ok');
+  }
+  return res;
+}
+
+async function autoCheckYtdlp() {
+  // Chequeo silencioso al arrancar: solo molesta si realmente hay algo nuevo
+  const res = await checkYtdlpUpdate(true);
+  if (res && res.ok && res.update_available) {
+    showToast(`yt-dlp ${res.latest} disponible · Configuración → Motor de descarga`, 'warn');
+  }
+}
+
+async function startYtdlpUpdate() {
+  const btnUpd = document.getElementById('btn-ytdlp-update');
+  const btnChk = document.getElementById('btn-ytdlp-check');
+  btnUpd.disabled = true;
+  btnChk.disabled = true;
+  setYtdlpFeedback('Iniciando…');
+  try {
+    const res = await pywebview.api.ytdlp_update();
+    if (!res.ok) {
+      setYtdlpFeedback('✗ ' + (res.error || 'No se pudo iniciar'), 'err');
+      btnUpd.disabled = false;
+      btnChk.disabled = false;
+      return;
+    }
+  } catch (e) {
+    setYtdlpFeedback('Error: ' + e, 'err');
+    btnUpd.disabled = false;
+    btnChk.disabled = false;
+    return;
+  }
+  document.getElementById('ytdlp-progress').classList.add('show');
+  startYtdlpPolling();
+}
+
+function startYtdlpPolling() {
+  if (ytdlpPollTimer) clearInterval(ytdlpPollTimer);
+  ytdlpPollTimer = setInterval(async () => {
+    let st;
+    try { st = await pywebview.api.ytdlp_get_update_state(); }
+    catch { return; }
+    renderYtdlpState(st);
+    if (!st.busy) {
+      clearInterval(ytdlpPollTimer);
+      ytdlpPollTimer = null;
+      document.getElementById('btn-ytdlp-update').disabled = false;
+      document.getElementById('btn-ytdlp-check').disabled = false;
+      await refreshYtdlpCard();
+      if (st.stage === 'done' && st.restart_needed) {
+        showToast('yt-dlp actualizado · reiniciá la app', 'ok');
+      } else if (st.stage === 'error') {
+        showToast(st.message || 'Falló la actualización', 'error');
+      }
+    }
+  }, 400);
+}
+
+function renderYtdlpState(st) {
+  if (!st) return;
+  const prog = document.getElementById('ytdlp-progress');
+  const fill = document.getElementById('ytdlp-progress-fill');
+  if (st.busy) {
+    prog.classList.add('show');
+  } else if (st.stage !== 'updating') {
+    prog.classList.remove('show');
+  }
+  fill.style.width = `${st.percent || 0}%`;
+  if (st.message) {
+    const cls = st.stage === 'error' ? 'err'
+              : (st.stage === 'done' ? 'ok' : '');
+    setYtdlpFeedback(st.message, cls);
+  }
+  document.getElementById('btn-ytdlp-restart').style.display =
+    st.restart_needed ? 'inline-flex' : 'none';
+  document.getElementById('btn-ytdlp-update').style.display =
+    st.update_available ? 'inline-flex' : 'none';
+}
+
+async function restoreBundledYtdlp() {
+  if (!confirm('¿Borrar la copia actualizada de yt-dlp y volver a la que trae la app?\n\nVas a tener que reiniciar para que tome efecto.')) return;
+  try {
+    const res = await pywebview.api.ytdlp_restore_bundled();
+    if (res.ok) {
+      showToast('Copia local eliminada · reiniciá la app', 'ok');
+      await refreshYtdlpCard();
+    } else {
+      showToast('✗ ' + (res.error || res.message || 'No se pudo borrar'), 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+async function restartApp() {
+  if (!confirm('¿Reiniciar AKX Downloader ahora?')) return;
+  try {
+    const res = await pywebview.api.restart_app();
+    if (!res.ok) {
+      showToast('✗ ' + (res.error || 'No se pudo reiniciar') + ' — cerrá y abrí la app a mano', 'error');
+    }
+  } catch (e) {
+    showToast('Error: ' + e, 'error');
+  }
+}
+
+function goToYtdlpCard() {
+  navTo('settings');
+  const card = document.getElementById('ytdlp-card');
+  if (!card) return;
+  card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  card.classList.add('flash');
+  setTimeout(() => card.classList.remove('flash'), 2400);
+}
+
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+function showReorderToast(fromName, toName) {
+  const t = document.getElementById('toast');
+  t.innerHTML = `
+    <div class="toast-title">↻ Renombrado por ID3</div>
+    <div class="toast-line from">${escapeHtml(fromName)}</div>
+    <div class="toast-line to"><span class="arrow">→</span>${escapeHtml(toName)}</div>
+  `;
+  t.className = 'toast show reorder';
+  clearTimeout(t._timer);
+  // Más tiempo porque es más texto
+  t._timer = setTimeout(() => t.classList.remove('show'), 5000);
+}
+</script>
+</body>
+</html>

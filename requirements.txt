@@ -1,0 +1,80 @@
+# =============================================================================
+# AKX Downloader - Dependencias de Python
+# =============================================================================
+# Instalación:
+#   pip install -r requirements.txt
+#
+# Si querés actualizar yt-dlp más adelante (recomendado periódicamente):
+#   pip install -U "yt-dlp[default]"
+#
+# IMPORTANTE para Linux: además de estas dependencias, necesitás un backend
+# gráfico para PyWebView. Instalá UNO de los dos:
+#   pip install 'pywebview[gtk]'   (Linux con GTK - recomendado)
+#   pip install 'pywebview[qt]'    (Linux con Qt - alternativo)
+#
+# En Windows y macOS no hace falta nada más:
+#   - Windows 10+: usa Edge WebView2 (preinstalado)
+#   - macOS:       usa WebKit nativo (preinstalado)
+# =============================================================================
+
+
+# ---- OBLIGATORIAS ----
+
+# Motor de descarga de YouTube y otros sitios.
+# Versiones modernas con todas las dependencias opcionales para mejor compatibilidad.
+yt-dlp[default]>=2024.1.0
+
+# Interfaz gráfica desktop con HTML/CSS/JS embebido en una ventana nativa.
+# Es lo que da la apariencia pulida con CSS real (en vez de Tkinter).
+pywebview>=5.0
+
+
+# ---- OPCIONALES (muy recomendadas) ----
+
+# Lectura y escritura de tags ID3/MP4. Si no está instalado:
+#   - No se ven las miniaturas embebidas en el reproductor
+#   - No se sincronizan los tags al renombrar
+#   - El reorder por ID3 no funciona en "Limpiar carpeta"
+mutagen>=1.47.0
+
+# Envía archivos borrados a la papelera del sistema en vez de eliminarlos
+# definitivamente. Sin esto, el botón "🗑 Borrar" del reproductor borra directo.
+Send2Trash>=1.8.0
+
+# Procesamiento de imágenes. Algunos backends de pywebview lo necesitan
+# para íconos de ventana. Si tu sistema falla con el ícono, instalalo.
+Pillow>=10.0.0
+
+
+# =============================================================================
+# DEPENDENCIA EXTERNA (NO se instala con pip)
+# =============================================================================
+#
+# FFmpeg DEBE estar instalado en tu sistema y disponible en el PATH.
+# Es necesario para:
+#   - Convertir audio a MP3
+#   - Fusionar video+audio en MP4
+#   - Embeber miniaturas en archivos de audio
+#
+# Cómo instalarlo:
+#
+#   Windows (con winget):
+#       winget install Gyan.FFmpeg
+#
+#   Windows (manual):
+#       Descargar desde https://www.gyan.dev/ffmpeg/builds/
+#       Extraer y agregar la carpeta /bin al PATH del sistema.
+#
+#   macOS (con Homebrew):
+#       brew install ffmpeg
+#
+#   Linux (Debian/Ubuntu):
+#       sudo apt install ffmpeg
+#
+#   Linux (Fedora/RHEL):
+#       sudo dnf install ffmpeg
+#
+# Para verificar que está bien instalado:
+#       ffmpeg -version
+#
+# =============================================================================

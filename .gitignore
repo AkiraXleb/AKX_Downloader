@@ -1,0 +1,20 @@
+# Build de PyInstaller (se regenera con build.ps1)
+/build/
+/dist/
+*.spec
+*.exe
+
+# Python
+__pycache__/
+*.pyc
+
+# Datos persistentes del usuario (nunca deben viajar en el repo)
+.akx_downloader/
+
+# Editor / OS
+.vscode/
+.idea/
+Thumbs.db
+
+# Instrucciones de proyecto para Claude Code (solo local, no se sube)
+CLAUDE.md
